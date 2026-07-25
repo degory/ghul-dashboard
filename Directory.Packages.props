@@ -2,9 +2,11 @@
   <ItemGroup>
     <PackageVersion Include="ghul.runtime" Version="5.8.1" />
 
-    <!-- Unit tests. MSTest 4 cannot be called for string equality from ghūl —
-         none of its AreEqual overloads resolve — so this tracks the 3.x line
-         the compiler's own tests use. -->
+    <!-- Unit tests, pinned to the 3.x line the compiler's own tests use.
+         MSTest 4 gave every Assert.AreEqual overload trailing optional
+         parameters for the caller-expression messages, and ghūl cannot omit an
+         optional parameter, so no call with fewer than five arguments
+         resolves. -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="MSTest.TestAdapter" Version="3.2.0" />
     <PackageVersion Include="MSTest.TestFramework" Version="3.2.0" />

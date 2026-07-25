@@ -78,6 +78,11 @@ containing spaces and parentheses, counters that go backwards when a core is
 hotplugged, a selection whose session has exited, a row at every width from 40
 columns up.
 
+MSTest is pinned to the 3.x line. MSTest 4 gave every `Assert.AreEqual` overload
+trailing optional parameters carrying the caller-expression messages, and ghūl
+cannot omit an optional parameter, so no call with fewer than five arguments
+resolves — for any argument type, not only strings.
+
 There are no integration tests. Covering the rest would mean faking `/proc`, a
 `~/.claude` directory and `git`/`gh`, and the seam that would make that possible
 is the same parser split these tests already exercise.
