@@ -113,6 +113,14 @@ namespace Dashboard is
         pad(text: string?, width: int) -> string static =>
             clip(text, width).pad_right(width);
 
+        // Clears everything before the next paint. The incremental paint only
+        // rewrites the lines it draws, so anything left by a resize — or by
+        // another program writing over the screen — needs this to go away.
+        clear() is
+            Std.write("{escape}[2J{escape}[H");
+        si
+
+        reverse(text: string) -> string static => paint_text(text, "7");
         dim(text: string) -> string static => paint_text(text, "2");
         red(text: string) -> string static => paint_text(text, "01;31");
         green(text: string) -> string static => paint_text(text, "01;32");

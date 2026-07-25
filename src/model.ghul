@@ -54,6 +54,56 @@ namespace Dashboard is
         init() is si
     si
 
+    // A moment's worth of machine load. Processor figures are deltas, so they
+    // are zero on the first sample.
+    class SYSTEM is
+        processor_percent: double public;
+        core_percents: double[] public;
+        load_average: double public;
+
+        memory_total_kb: long public;
+        memory_available_kb: long public;
+        swap_total_kb: long public;
+        swap_free_kb: long public;
+
+        top: Iterable[PROCESS_LOAD] public;
+
+        memory_used_kb: long => memory_total_kb - memory_available_kb;
+        swap_used_kb: long => swap_total_kb - swap_free_kb;
+
+        memory_percent: double => get_percent(memory_used_kb, memory_total_kb);
+        swap_percent: double => get_percent(swap_used_kb, swap_total_kb);
+
+        get_percent(used: long, total: long) -> double static is
+            if total <= 0L then
+                return 0.0D;
+            fi
+
+            return cast double(used) * 100.0D / cast double(total);
+        si
+
+        init() is
+            core_percents = [];
+            top = Collections.LIST[PROCESS_LOAD]();
+        si
+    si
+
+    // One process's share of the machine, as a percentage of a single core, so
+    // a value over 100 means it is spread across more than one.
+    class PROCESS_LOAD is
+        pid: int;
+        name: string;
+        processor_percent: double;
+        memory_kb: long;
+
+        init(pid: int, name: string, processor_percent: double, memory_kb: long) is
+            self.pid = pid;
+            self.name = name;
+            self.processor_percent = processor_percent;
+            self.memory_kb = memory_kb;
+        si
+    si
+
     class WORKTREE is
         path: string;
         repository: string;
@@ -107,6 +157,8 @@ namespace Dashboard is
         // Null until the first successful fetch; the pull-request panel says
         // so rather than showing an empty list as though there were none.
         pull_requests_fetched_at: long public;
+
+        system: SYSTEM? public;
 
         init(
             sessions: Iterable[SESSION],
