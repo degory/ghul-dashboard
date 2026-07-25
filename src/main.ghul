@@ -213,8 +213,10 @@ namespace Dashboard is
             fi
         si
 
-        // The workspace is the directory holding the per-repo checkouts, found
-        // by walking up from the current directory.
+        // The workspace is the directory holding the per-repo checkouts. The
+        // current directory is tried first, then the directory this program was
+        // built into — which is inside the workspace however it was launched,
+        // so running it from an unrelated shell still works.
         find_workspace() -> string? static is
             let override = System.Environment.get_environment_variable("GHUL_WORKSPACE");
 
@@ -222,7 +224,17 @@ namespace Dashboard is
                 return override;
             fi
 
-            let current mut = System.Environment.current_directory;
+            return
+                find_workspace_above(System.Environment.current_directory) ??
+                find_workspace_above(System.AppContext.base_directory);
+        si
+
+        find_workspace_above(start: string?) -> string? static is
+            if string.is_null_or_white_space(start) then
+                return null;
+            fi
+
+            let current mut = start!;
 
             let hops mut = 0;
 

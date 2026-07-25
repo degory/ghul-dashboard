@@ -13,8 +13,10 @@ dotnet run -- --interval 2      # slower refresh
 dotnet run -- --once            # one frame to stdout, for scripting
 ```
 
-The workspace is found by walking up from the current directory for a directory
-holding both `CLAUDE.md` and `worktrees/`; `GHUL_WORKSPACE` overrides.
+The workspace is the directory holding both `CLAUDE.md` and `worktrees/`, found
+by walking up from the current directory and then from the directory this program
+was built into — so running it from an unrelated shell works wherever that shell
+happens to be. `GHUL_WORKSPACE` overrides both.
 
 ## Keys
 
@@ -26,9 +28,10 @@ holding both `CLAUDE.md` and `worktrees/`; `GHUL_WORKSPACE` overrides.
 | `q`, Escape, Ctrl-C | quit |
 
 `k` sends `SIGTERM`, not a kill, so the session can save its transcript and exit
-cleanly. It refuses to terminate the session the dashboard is running under —
-that session is an ancestor of this process, and it is usually the top row, being
-the most recently active.
+cleanly. It refuses to terminate a session that is an ancestor of this process,
+which would take the dashboard down with it — that only arises when a session
+spawned the dashboard itself; run from its own shell, no session owns it and the
+confirmation is the only guard.
 
 Selection follows a pid rather than a row, so rows reordering under it — as
 sessions become active — never moves the selection to a different session.
