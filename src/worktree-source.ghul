@@ -1,0 +1,50 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.LIST;
+
+    use IO.Path;
+    use IO.File;
+    use IO.Directory;
+
+    // The checkouts under the workspace, and the worktrees each of them has.
+    class WORKTREE_SOURCE is
+        _workspace: string;
+
+        init(workspace: string) is
+            _workspace = workspace;
+        si
+
+        collect() -> Tasks.TASK[Iterable[WORKTREE]] is
+            let result = LIST[WORKTREE]();
+
+            for repository in list_repositories() do
+                let name = FILES.name_of(repository);
+
+                let output = await PROCESS_RUNNER.run("git", ["-C", repository, "worktree", "list", "--porcelain"]);
+
+                for worktree in WORKTREE_LIST.parse(name, output) do
+                    result.add(worktree);
+                od
+            od
+
+            return result;
+        si
+
+        // Checkouts sit directly under the workspace. A worktree's `.git` is a
+        // file pointing at the primary's, rather than a directory, so both
+        // shapes count.
+        list_repositories() -> Iterable[string] is
+            let result = LIST[string]();
+
+            for directory in FILES.list_directories(_workspace) do
+                let marker = Path.join(directory, ".git");
+
+                if Directory.exists(marker) \/ File.exists(marker) then
+                    result.add(directory);
+                fi
+            od
+
+            return result;
+        si
+    si
+si

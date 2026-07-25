@@ -1,0 +1,192 @@
+namespace Dashboard is
+    // Column widths for one session row, once the fixed columns have taken
+    // theirs.
+    class SESSION_COLUMNS is
+        name: int;
+        where: int;
+
+        init(name: int, where: int) is
+            self.name = name;
+            self.where = where;
+        si
+    si
+
+    // Column widths for one pull-request row. A zero width means the column is
+    // left out of the row entirely.
+    class PULL_REQUEST_COLUMNS is
+        repository: int;
+        branch: int;
+        checks: int;
+        review: int;
+
+        init(repository: int, branch: int, checks: int, review: int) is
+            self.repository = repository;
+            self.branch = branch;
+            self.checks = checks;
+            self.review = review;
+        si
+    si
+
+    // The arithmetic that fits the frame to the terminal, kept away from the
+    // rendering so it can be checked directly. Each row's fixed cost is stated
+    // as its parts rather than as a total, so adding a column cannot leave a
+    // stale number behind — which is exactly how the pull-request rows came to
+    // overrun their width.
+    class LAYOUT is
+        // A session row: marker, name, kind, status, worktree, age.
+        session_marker_width: int static => 1;
+        session_kind_width: int static => 3;
+        session_status_width: int static => 5;
+        session_age_width: int static => 4;
+        session_gaps: int static => 5;
+
+        session_fixed_width: int static =>
+            session_marker_width +
+            session_kind_width +
+            session_status_width +
+            session_age_width +
+            session_gaps;
+
+        // The narrowest pair of elastic columns worth rendering; below this the
+        // row is allowed to overrun rather than becoming unreadable.
+        minimum_elastic_width: int static => 22;
+
+        get_session_columns(width: int) -> SESSION_COLUMNS static is
+            let elastic mut = width - session_fixed_width;
+
+            if elastic < minimum_elastic_width then
+                elastic = minimum_elastic_width;
+            fi
+
+            let name = elastic * 55 / 100;
+
+            return SESSION_COLUMNS(name, elastic - name);
+        si
+
+        // A pull-request row: indent, marker, repository, number, branch,
+        // checks, review.
+        pull_request_indent: int static => 2;
+        pull_request_marker_width: int static => 1;
+        pull_request_repository_width: int static => 12;
+        pull_request_number_width: int static => 6;
+        pull_request_checks_width: int static => 7;
+        pull_request_review_width: int static => 8;
+        pull_request_gaps: int static => 5;
+
+        pull_request_fixed_width: int static =>
+            pull_request_indent +
+            pull_request_marker_width +
+            pull_request_repository_width +
+            pull_request_number_width +
+            pull_request_checks_width +
+            pull_request_review_width +
+            pull_request_gaps;
+
+        minimum_branch_width: int static => 16;
+
+        // Which columns a pull-request row can afford, at the widths where it
+        // cannot afford all of them. A zero width means the column is left out:
+        // the repository goes first, since the branch name usually implies it,
+        // then the checks state. The branch itself is never dropped — without it
+        // the row identifies nothing.
+        get_pull_request_columns(width: int) -> PULL_REQUEST_COLUMNS static is
+            let full = width - pull_request_fixed_width;
+
+            if full >= minimum_branch_width then
+                return
+                    PULL_REQUEST_COLUMNS(
+                        pull_request_repository_width,
+                        full,
+                        pull_request_checks_width,
+                        pull_request_review_width
+                    );
+            fi
+
+            let without_repository = full + pull_request_repository_width + 1;
+
+            if without_repository >= minimum_branch_width then
+                return
+                    PULL_REQUEST_COLUMNS(
+                        0,
+                        without_repository,
+                        pull_request_checks_width,
+                        pull_request_review_width
+                    );
+            fi
+
+            let without_checks mut = without_repository + pull_request_checks_width + 1;
+
+            if without_checks < minimum_branch_width then
+                without_checks = minimum_branch_width;
+            fi
+
+            return PULL_REQUEST_COLUMNS(0, without_checks, 0, pull_request_review_width);
+        si
+
+        // The header carries a title, a clock, two labelled meters with their
+        // percentages, the load average and the memory sizes. Its meters share
+        // whatever those leave, and shrink on a narrow window rather than
+        // wrapping it — and vanish entirely when there is nothing to share, at
+        // which point the header drops segments instead.
+        header_title_width: int static => 5;
+        header_clock_width: int static => 10;
+        header_label_width: int static => 4;
+        header_percent_width: int static => 5;
+        header_load_width: int static => 14;
+        header_sizes_width: int static => 12;
+
+        header_text_width: int static =>
+            header_title_width +
+            header_clock_width +
+            (header_label_width + header_percent_width) * 2 +
+            header_load_width +
+            header_sizes_width;
+
+        minimum_meter_width: int static => 4;
+        maximum_meter_width: int static => 24;
+
+        // Zero when even the narrowest pair will not fit, which the header reads
+        // as "no meters".
+        get_meter_width(width: int) -> int static is
+            let meter = (width - header_text_width) / 2;
+
+            if meter < minimum_meter_width then
+                return 0;
+            elif meter > maximum_meter_width then
+                return maximum_meter_width;
+            fi
+
+            return meter;
+        si
+
+        // Rows the panels have between them: two header rows, three panel
+        // headings, a blank line before each of the last two panels, a blank
+        // line before the footer, and the footer.
+        panel_furniture_rows: int static => 9;
+
+        minimum_session_rows: int static => 3;
+        maximum_pull_request_rows: int static => 8;
+        maximum_in_flight_rows: int static => 3;
+
+        // Runs are the reason the window is open, so they are served first and
+        // sessions take what is left after the pull requests have a bounded
+        // share.
+        get_session_rows(height: int, run_rows: int, pull_request_rows: int) -> int static is
+            let rows = height - panel_furniture_rows - run_rows - pull_request_rows;
+
+            if rows < minimum_session_rows then
+                return minimum_session_rows;
+            fi
+
+            return rows;
+        si
+
+        get_capped(count: int, cap: int) -> int static is
+            if count > cap then
+                return cap;
+            fi
+
+            return count;
+        si
+    si
+si

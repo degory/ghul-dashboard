@@ -1,0 +1,56 @@
+namespace Dashboard is
+    // Assembles one frame's worth of data from the sources.
+    //
+    // The two sources that spawn subprocesses start before either is awaited, so
+    // `git` and `gh` overlap each other and the local file reading. Everything is
+    // gathered into a single snapshot, so a redraw cannot mix two generations of
+    // data.
+    class COLLECTOR is
+        _sessions: SESSION_SOURCE;
+        _runs: RUN_SOURCE;
+        _worktrees: WORKTREE_SOURCE;
+        _pull_requests: PULL_REQUEST_SOURCE;
+        _system: SYSTEM_SOURCE;
+        _locations: SESSION_LOCATIONS;
+
+        init(workspace: string) is
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+
+            _sessions = SESSION_SOURCE(home);
+            _runs = RUN_SOURCE(System.Environment.get_environment_variable("XDG_RUNTIME_DIR"));
+            _worktrees = WORKTREE_SOURCE(workspace);
+            _pull_requests = PULL_REQUEST_SOURCE(_worktrees);
+            _system = SYSTEM_SOURCE();
+            _locations = SESSION_LOCATIONS(workspace, home);
+        si
+
+        collect() -> Tasks.TASK[SNAPSHOT] is
+            let worktrees_task = _worktrees.collect();
+            let pull_requests_task = _pull_requests.collect(now());
+
+            let runs = _runs.collect();
+            let sessions = _sessions.collect();
+
+            let worktrees = await worktrees_task;
+            let pull_requests = await pull_requests_task;
+
+            _locations.attribute_from_runs(sessions, runs, worktrees);
+
+            let snapshot = SNAPSHOT(sessions, runs, worktrees, pull_requests);
+
+            snapshot.pull_requests_fetched_at = _pull_requests.fetched_at;
+            snapshot.system = _system.sample();
+
+            return snapshot;
+        si
+
+        // Left to the caller to run after the first paint, since it reads a
+        // transcript per session that no test run pinned.
+        resolve_locations(snapshot: SNAPSHOT) is
+            _locations.attribute_from_transcripts(snapshot.sessions, snapshot.worktrees);
+        si
+
+        now() -> long static =>
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+    si
+si

@@ -46,6 +46,54 @@ long session list cannot push the pull requests off the bottom — each panel th
 has to truncate says how many rows it dropped. A resize clears the screen before
 repainting, since the new layout does not necessarily cover what the old one drew.
 
+## Structure
+
+Parsing is kept apart from reading, which is what makes most of the program
+testable without a machine to inspect:
+
+| | |
+| --- | --- |
+| `text.ghul`, `proc-parse.ghul`, `worktree-parse.ghul`, `pull-request-parse.ghul` | pure functions from a file's or command's output to data |
+| `files.ghul`, `process-runner.ghul`, `process-tree.ghul` | the only code that reads files or spawns processes |
+| `*-source.ghul` | one per data source: reads, parses, and holds whatever state that source needs between frames |
+| `collector.ghul` | starts the sources and assembles one snapshot |
+| `layout.ghul` | the arithmetic that fits the frame to the terminal |
+| `format.ghul`, `screen.ghul`, `renderer.ghul` | turning a snapshot into lines, and lines into a painted frame |
+
+Each row's fixed cost is stated in `LAYOUT` as its parts rather than as a total,
+so adding a column cannot leave a stale number behind. `LINE_BUILDER` then drops
+any segment that would not fit, so a row cannot overrun its width even if the
+arithmetic is wrong.
+
+## Tests
+
+```sh
+dotnet test tests
+```
+
+73 tests over the parsers, the layout arithmetic, the formatters and the
+selection behaviour — every part that is a function of its input rather than of
+the machine. The awkward cases are the point: a `/proc/<pid>/stat` command
+containing spaces and parentheses, counters that go backwards when a core is
+hotplugged, a selection whose session has exited, a row at every width from 40
+columns up.
+
+Assertions are global functions in `tests/src/assertions.ghul`, so the tests read
+as statements and no test file names MSTest directly.
+
+MSTest is pinned to the 3.x line. Two things stand in the way of 4.x, and only
+the first is about ghūl: every 4.x overload gained trailing optional parameters
+holding the caller-expression text it prints on failure, and ghūl cannot omit an
+optional parameter, so no call with fewer than five arguments resolves — for any
+argument type. Wrapping each assertion once, as above, handles that. The
+remaining obstacle is that 4.x expects the Microsoft.Testing.Platform runner,
+which generates the executable's entry point, and a ghūl executable declares its
+own.
+
+There are no integration tests. Covering the rest would mean faking `/proc`, a
+`~/.claude` directory and `git`/`gh`, and the seam that would make that possible
+is the same parser split these tests already exercise.
+
 ## Where the data comes from
 
 | Panel | Source |
@@ -81,3 +129,5 @@ process is gone and which never reached `done` was abandoned by a killed run.
   Ctrl-C all exit cleanly.
 - The pull-request query covers checkouts directly under the workspace, and only
   branches named `claude/*`.
+- Below about 60 columns the pull-request rows start dropping columns — the
+  repository first, then the CI state — to keep the branch name readable.

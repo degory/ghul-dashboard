@@ -1,0 +1,200 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.MutableList;
+    use Collections.MutableMap;
+    use Collections.LIST;
+    use Collections.MAP;
+
+    // Samples machine load. Retains the previous sample because every processor
+    // figure is a delta: what a counter reads means nothing, only how fast it
+    // grows.
+    class SYSTEM_SOURCE is
+        // The kernel reports process times in USER_HZ, which is 100 on every
+        // Linux configuration this runs on.
+        ticks_per_second: double static => 100.0D;
+
+        // The shortest delta worth reporting. A window much below this is mostly
+        // sampling noise, and one frame of it would read as a spike.
+        minimum_window_ms: long static => 200L;
+
+        busiest_count: int static => 3;
+
+        _previous_overall: PROCESSOR_TIMES?;
+        _previous_cores: MutableList[PROCESSOR_TIMES];
+        _previous_ticks: MutableMap[int,long];
+        _previous_at: long;
+
+        init() is
+            _previous_cores = LIST[PROCESSOR_TIMES]();
+            _previous_ticks = MAP[int,long]();
+
+            // Primed at construction so the first frame has a baseline to
+            // subtract from, rather than reporting an idle machine.
+            read_processor_times(SYSTEM());
+            read_busiest(SYSTEM(), 0.0D);
+
+            _previous_at = now();
+        si
+
+        sample() -> SYSTEM is
+            let since = now() - _previous_at;
+
+            if since < minimum_window_ms then
+                System.Threading.Thread.sleep(cast int(minimum_window_ms - since));
+            fi
+
+            let result = SYSTEM();
+
+            let elapsed_seconds = cast double(now() - _previous_at) / 1000.0D;
+
+            read_processor_times(result);
+            read_memory(result);
+
+            result.load_average = LOAD_AVERAGE.parse(FILES.read_text("/proc/loadavg"));
+
+            read_busiest(result, elapsed_seconds);
+
+            _previous_at = now();
+
+            return result;
+        si
+
+        // /proc/stat leads with the aggregate line, then one line per core.
+        read_processor_times(result: SYSTEM) is
+            let all = PROCESSOR_TIMES.parse_all(FILES.read_text("/proc/stat")) | .collect_list();
+
+            if all.count == 0 then
+                return;
+            fi
+
+            result.processor_percent = all[0].percent_since(_previous_overall);
+
+            _previous_overall = all[0];
+
+            let percents = LIST[double]();
+
+            let index mut = 1;
+
+            while index < all.count do
+                let core = index - 1;
+
+                let previous =
+                    if core < _previous_cores.count then
+                        _previous_cores[core];
+                    else
+                        null;
+                    fi;
+
+                percents.add(all[index].percent_since(previous));
+
+                if core < _previous_cores.count then
+                    _previous_cores[core] = all[index];
+                else
+                    _previous_cores.add(all[index]);
+                fi
+
+                index = index + 1;
+            od
+
+            result.core_percents = percents | .collect_array();
+        si
+
+        read_memory(result: SYSTEM) static is
+            let memory = MEMORY_INFO.parse(FILES.read_text("/proc/meminfo"));
+
+            result.memory_total_kb = memory.total_kb;
+            result.memory_available_kb = memory.available_kb;
+            result.swap_total_kb = memory.swap_total_kb;
+            result.swap_free_kb = memory.swap_free_kb;
+        si
+
+        // Per-process utilisation, as a share of one core, so a figure above 100
+        // means a process is spread over more than one.
+        read_busiest(result: SYSTEM, elapsed_seconds: double) is
+            let ticks = MAP[int,long]();
+
+            let loads = LIST[PROCESS_LOAD]();
+
+            for pid in PROCESS_TREE.list_pids() do
+                let stat = PROCESS_STAT.parse(FILES.read_text("/proc/{pid}/stat"));
+
+                if !stat? then
+                    continue;
+                fi
+
+                ticks[pid] = stat.processor_ticks;
+
+                if elapsed_seconds <= 0.0D \/ !_previous_ticks.contains_key(pid) then
+                    continue;
+                fi
+
+                let worked = stat.processor_ticks - _previous_ticks[pid];
+
+                if worked <= 0L then
+                    continue;
+                fi
+
+                loads.add(
+                    PROCESS_LOAD(
+                        pid,
+                        stat.command,
+                        cast double(worked) * 100.0D / (ticks_per_second * elapsed_seconds)
+                    )
+                );
+            od
+
+            _previous_ticks = ticks;
+
+            result.top = take_busiest(loads, busiest_count);
+        si
+
+        // Selection sort over the first few: the list runs to hundreds of
+        // entries and only a handful are ever shown, so ordering all of them
+        // would be wasted work.
+        take_busiest(loads: MutableList[PROCESS_LOAD], count: int) -> Iterable[PROCESS_LOAD] static is
+            let result = LIST[PROCESS_LOAD]();
+
+            let taken = LIST[bool]();
+
+            for load in loads do
+                taken.add(false);
+            od
+
+            let wanted = LAYOUT.get_capped(count, loads.count);
+
+            let picked mut = 0;
+
+            while picked < wanted do
+                let best mut = -1;
+
+                let index mut = 0;
+
+                while index < loads.count do
+                    if
+                        !taken[index] /\
+                        (best < 0 \/ loads[index].processor_percent > loads[best].processor_percent)
+                    then
+                        best = index;
+                    fi
+
+                    index = index + 1;
+                od
+
+                if best < 0 then
+                    break;
+                fi
+
+                taken[best] = true;
+
+                result.add(loads[best]);
+
+                picked = picked + 1;
+            od
+
+            return result;
+        si
+
+        now() -> long static =>
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+    si
+si
