@@ -1,14 +1,14 @@
 # ghul-dashboard
 
-Live view of what is happening across the ghūl workspace: Claude Code sessions
-and the worktree each is working in, ghul-test runs with progress, and open
-`claude/*` pull requests with CI and review state.
+Live view of what is happening across the ghūl workspace: machine load, Claude
+Code sessions and the worktree each is working in, ghul-test runs with progress,
+and open `claude/*` pull requests with CI and review state.
 
 Written in ghūl. Run it in a spare terminal pane:
 
 ```sh
 cd ghul-dashboard
-dotnet run                      # 1s refresh; q, Escape or Ctrl-C quits
+dotnet run                      # 1s refresh
 dotnet run -- --interval 2      # slower refresh
 dotnet run -- --once            # one frame to stdout, for scripting
 ```
@@ -16,21 +16,57 @@ dotnet run -- --once            # one frame to stdout, for scripting
 The workspace is found by walking up from the current directory for a directory
 holding both `CLAUDE.md` and `worktrees/`; `GHUL_WORKSPACE` overrides.
 
+## Keys
+
+| Key | |
+| --- | --- |
+| up / down | move the session selection |
+| `k` | terminate the selected session — asks `y` / `n` first |
+| Ctrl-L | repaint from a cleared screen |
+| `q`, Escape, Ctrl-C | quit |
+
+`k` sends `SIGTERM`, not a kill, so the session can save its transcript and exit
+cleanly. It refuses to terminate the session the dashboard is running under —
+that session is an ancestor of this process, and it is usually the top row, being
+the most recently active.
+
+Selection follows a pid rather than a row, so rows reordering under it — as
+sessions become active — never moves the selection to a different session.
+
+## Layout
+
+The frame is fitted to the terminal every refresh. Width is divided between the
+two elastic columns, a session's name and its worktree, after the fixed columns
+have taken what they need; the load meters shrink on a narrow window rather than
+wrapping. Height is divided between the panels before any of them renders, so a
+long session list cannot push the pull requests off the bottom — each panel that
+has to truncate says how many rows it dropped. A resize clears the screen before
+repainting, since the new layout does not necessarily cover what the old one drew.
+
 ## Where the data comes from
 
 | Panel | Source |
 | --- | --- |
-| sessions | `~/.claude/sessions/<pid>.json`, filtered to live processes |
+| sessions | `~/.claude/sessions/<pid>.json`, filtered to live processes, most recently active first |
 | session worktree | the owning run's directory, else the last `cwd` in the session's transcript |
 | test runs | `$XDG_RUNTIME_DIR/ghul-test/<pid>.json`, written by ghul-test |
 | worktrees | `git worktree list --porcelain` per checkout |
 | pull requests | one `gh api graphql` search, refreshed every 120s |
+| processor, memory | `/proc/stat`, `/proc/meminfo`, `/proc/loadavg` |
+| busiest processes | `utime + stime` deltas from `/proc/<pid>/stat` |
 
 A session's own `cwd` is where it was launched, which for this workspace is the
 umbrella directory rather than a worktree, so the worktree column is derived two
 ways. A session with a test run in flight is attributed exactly, by walking
 `/proc/<pid>/stat` parent pids up from the run to a known session. Otherwise the
 last `cwd` recorded in its transcript is the best available answer.
+
+Every processor figure is a delta between two samples, so the monitor primes
+itself at startup and enforces a minimum sampling window — a shorter one is
+mostly noise, and a single frame of it reads as a spike. Per-process figures are
+a share of one core, so a value above 100% means a process is spread across more
+than one. `USER_HZ` is assumed to be 100, which holds on every Linux
+configuration this runs on.
 
 Run status files are reaped here as well as by the status line: a file whose
 process is gone and which never reached `done` was abandoned by a killed run.
@@ -40,7 +76,5 @@ process is gone and which never reached `done` was abandoned by a killed run.
 - A `SIGTERM` or `SIGKILL` leaves the terminal on the alternate screen with the
   cursor hidden, since neither is handled. `reset` restores it. `q`, Escape and
   Ctrl-C all exit cleanly.
-- Column widths are fixed rather than fitted to the terminal, so a narrow window
-  wraps.
 - The pull-request query covers checkouts directly under the workspace, and only
   branches named `claude/*`.

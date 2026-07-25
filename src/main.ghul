@@ -50,14 +50,21 @@ namespace Dashboard is
 
             let collector = COLLECTOR(workspace);
 
+            let view = VIEW();
+
             if once then
-                let renderer = RENDERER(100);
+                // Fitted to the terminal here too, so a piped frame matches
+                // what the live view would have drawn.
+                let sizing = SCREEN();
+
+                view.width = sizing.width;
+                view.height = sizing.height;
 
                 let snapshot = collector.collect().result;
 
                 collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
 
-                for line in renderer.render(snapshot) do
+                for line in RENDERER(view).render(snapshot) do
                     Std.write_line(line);
                 od
 
@@ -76,11 +83,25 @@ namespace Dashboard is
                     // the first paint, so a cold start shows something at once.
                     collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
 
-                    let renderer = RENDERER(screen.width);
+                    let sessions = snapshot.sessions | .collect_list();
 
-                    screen.paint(renderer.render(snapshot));
+                    // A resize leaves the parts of the screen the new layout
+                    // does not reach holding the old frame, so it is cleared
+                    // before repainting at the new size.
+                    if screen.width != view.width \/ screen.height != view.height then
+                        view.width = screen.width;
+                        view.height = screen.height;
 
-                    if wait_for_quit(interval) then
+                        screen.clear();
+                    fi
+
+                    if view.selected_pid == 0 /\ sessions.count > 0 then
+                        view.selected_pid = sessions[0].pid;
+                    fi
+
+                    screen.paint(RENDERER(view).render(snapshot));
+
+                    if handle_keys(screen, view, sessions, interval) then
                         break;
                     fi
                 od
@@ -95,20 +116,51 @@ namespace Dashboard is
             return 0;
         si
 
-        // Returns true when the user asked to quit. Polls rather than blocking
-        // on a key so the frame keeps refreshing on its own.
-        wait_for_quit(interval: int) -> bool static is
-            let poll = 50;
+        // Polls for keystrokes until the refresh period expires, so the frame
+        // keeps its own cadence whether or not anything is typed. Returns true
+        // when the user asked to quit.
+        handle_keys(screen: SCREEN, view: VIEW, sessions: Collections.MutableList[SESSION], interval: int) -> bool static is
+            let poll = 40;
 
             let waited mut = 0;
 
             while waited < interval do
+                // One key per pass: each returns to repaint before the next is
+                // read, so held-down arrows scroll at the refresh rate.
                 if Std.key_available then
                     let key = Std.read_key(true);
 
-                    // Ctrl-C arrives as input while the alternate screen is up.
-                    if key.key_char == 'q' \/ key.key_char == cast char(3) \/ key.key == System.ConsoleKey.ESCAPE then
+                    // Ctrl-C arrives as input while the alternate screen is up,
+                    // so it has to be handled rather than ending the process.
+                    if
+                        key.key_char == 'q' \/
+                        key.key_char == cast char(3) \/
+                        key.key == System.ConsoleKey.ESCAPE
+                    then
                         return true;
+                    elif key.key == System.ConsoleKey.UP_ARROW then
+                        view.clear_pending_kill();
+                        view.move(sessions, -1);
+                        return false;
+                    elif key.key == System.ConsoleKey.DOWN_ARROW then
+                        view.clear_pending_kill();
+                        view.move(sessions, 1);
+                        return false;
+                    elif key.key_char == cast char(12) then
+                        // Ctrl-L: repaint from nothing, the conventional escape
+                        // from a screen another program has scribbled on.
+                        screen.clear();
+                        return false;
+                    elif key.key_char == 'k' then
+                        request_kill(view, sessions);
+                        return false;
+                    elif view.pending_kill_pid > 0 /\ (key.key_char == 'y' \/ key.key_char == 'Y') then
+                        confirm_kill(view);
+                        return false;
+                    elif view.pending_kill_pid > 0 then
+                        view.clear_pending_kill();
+                        view.message = null;
+                        return false;
                     fi
                 fi
 
@@ -118,6 +170,47 @@ namespace Dashboard is
             od
 
             return false;
+        si
+
+        request_kill(view: VIEW, sessions: Collections.MutableList[SESSION]) static is
+            let session = view.get_selected(sessions);
+
+            if !session? then
+                view.message = "no session selected";
+                return;
+            fi
+
+            // Terminating the session this dashboard is running under would
+            // take the dashboard with it. That session is an ancestor rather
+            // than this process, since it spawned us — and it is usually the
+            // top row, being the most recently active.
+            let candidates = Collections.SET[int]();
+
+            candidates.add(session.pid);
+
+            if SHELL.find_ancestor(System.Environment.process_id, candidates) > 0 then
+                view.message = "that session is running this dashboard";
+                return;
+            fi
+
+            view.pending_kill_pid = session.pid;
+            view.message = null;
+        si
+
+        // SIGTERM rather than a kill: a session asked to stop can save its
+        // transcript and exit cleanly, which SIGKILL would deny it.
+        confirm_kill(view: VIEW) static is
+            let pid = view.pending_kill_pid;
+
+            view.clear_pending_kill();
+
+            let output = SHELL.run("kill", ["-TERM", "{pid}"]).result;
+
+            if string.is_null_or_white_space(output) then
+                view.message = "sent SIGTERM to {pid}";
+            else
+                view.message = "kill {pid}: {output.trim()}";
+            fi
         si
 
         // The workspace is the directory holding the per-repo checkouts, found

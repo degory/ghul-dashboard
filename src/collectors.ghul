@@ -58,6 +58,8 @@ namespace Dashboard is
         _pull_requests: Iterable[PULL_REQUEST];
         _pull_requests_fetched_at: long;
 
+        _system_monitor: SYSTEM_MONITOR;
+
         pull_request_interval_ms: long => 120_000L;
 
         init(workspace: string) is
@@ -84,6 +86,8 @@ namespace Dashboard is
             _session_options.property_naming_policy = SNAKE_TO_CAMEL_CASE();
 
             _pull_requests = LIST[PULL_REQUEST]();
+
+            _system_monitor = SYSTEM_MONITOR();
         si
 
         // Starts every collector before awaiting any of them, so the local
@@ -105,6 +109,7 @@ namespace Dashboard is
             let snapshot = SNAPSHOT(sessions, runs, worktrees, pull_requests);
 
             snapshot.pull_requests_fetched_at = _pull_requests_fetched_at;
+            snapshot.system = _system_monitor.sample();
 
             return snapshot;
         si
@@ -184,7 +189,32 @@ namespace Dashboard is
                 yrt
             od
 
+            sort_by_recent_activity(result);
+
             return result;
+        si
+
+        // Most recently active first. Insertion sort: a handful of sessions,
+        // and it keeps the order of equally-recent ones stable so rows do not
+        // swap under the selection.
+        sort_by_recent_activity(sessions: MutableList[SESSION]) static is
+            let index mut = 1;
+
+            while index < sessions.count do
+                let session = sessions[index];
+
+                let place mut = index;
+
+                while place > 0 /\ sessions[place - 1].status_updated_at < session.status_updated_at do
+                    sessions[place] = sessions[place - 1];
+
+                    place = place - 1;
+                od
+
+                sessions[place] = session;
+
+                index = index + 1;
+            od
         si
 
         // A session's own cwd is where it was launched, which for this
