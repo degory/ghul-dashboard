@@ -1,0 +1,4 @@
+// The test project builds as an executable, so it needs an entry point. The
+// test runner drives the annotated classes; nothing runs this.
+entry() is
+si

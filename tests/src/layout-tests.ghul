@@ -1,0 +1,194 @@
+namespace Tests is
+    use Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+
+    use Dashboard;
+
+    class LAYOUT_TESTS is
+        @test()
+
+        init() is si
+
+        // The elastic columns take exactly what the fixed ones leave, so a row
+        // fills its width and no more. This is the property the pull-request
+        // rows lost when their fixed cost was a hardcoded total.
+        layout__get_session_columns__fills_the_width_exactly() is
+            @test()
+
+            for width in [60, 80, 100, 137, 200] do
+                let columns = LAYOUT.get_session_columns(width);
+
+                Assert.are_equal(
+                    width,
+                    columns.name + columns.where + LAYOUT.session_fixed_width
+                );
+            od
+        si
+
+        layout__get_session_columns__gives_the_name_more_room_than_the_worktree() is
+            @test()
+
+            let columns = LAYOUT.get_session_columns(120);
+
+            Assert.is_true(columns.name > columns.where);
+        si
+
+        // Below a usable width the columns stop shrinking rather than becoming
+        // too narrow to read.
+        layout__get_session_columns__stops_shrinking_at_a_floor() is
+            @test()
+
+            let columns = LAYOUT.get_session_columns(20);
+
+            Assert.are_equal(LAYOUT.minimum_elastic_width, columns.name + columns.where);
+        si
+
+        layout__get_pull_request_columns__fills_the_width_exactly_when_every_column_fits() is
+            @test()
+
+            for width in [80, 100, 160] do
+                let columns = LAYOUT.get_pull_request_columns(width);
+
+                Assert.are_equal(
+                    width,
+                    columns.repository + columns.branch + columns.checks + columns.review +
+                        LAYOUT.pull_request_indent +
+                        LAYOUT.pull_request_marker_width +
+                        LAYOUT.pull_request_number_width +
+                        LAYOUT.pull_request_gaps
+                );
+            od
+        si
+
+        // The branch name usually implies the repository, so that column goes
+        // first when there is not room for everything.
+        layout__get_pull_request_columns__drops_the_repository_before_the_branch_suffers() is
+            @test()
+
+            let columns = LAYOUT.get_pull_request_columns(50);
+
+            Assert.are_equal(0, columns.repository);
+            Assert.is_true(columns.branch >= LAYOUT.minimum_branch_width);
+        si
+
+        layout__get_pull_request_columns__drops_the_checks_state_next() is
+            @test()
+
+            let columns = LAYOUT.get_pull_request_columns(40);
+
+            Assert.are_equal(0, columns.repository);
+            Assert.are_equal(0, columns.checks);
+            Assert.is_true(columns.review > 0);
+        si
+
+        // Without a branch the row identifies nothing, so it is never dropped.
+        layout__get_pull_request_columns__always_keeps_the_branch() is
+            @test()
+
+            for width in [20, 30, 40, 50, 60, 200] do
+                Assert.is_true(LAYOUT.get_pull_request_columns(width).branch > 0);
+            od
+        si
+
+        layout__get_meter_width__grows_with_the_window_up_to_a_cap() is
+            @test()
+
+            Assert.are_equal(LAYOUT.maximum_meter_width, LAYOUT.get_meter_width(400));
+            Assert.is_true(LAYOUT.get_meter_width(90) < LAYOUT.maximum_meter_width);
+            Assert.is_true(LAYOUT.get_meter_width(90) > LAYOUT.minimum_meter_width);
+        si
+
+        // Zero means "no room for a bar", which the header reads as a signal to
+        // show the percentage alone rather than as a zero-width bar.
+        layout__get_meter_width__is_zero_when_there_is_no_room() is
+            @test()
+
+            Assert.are_equal(0, LAYOUT.get_meter_width(50));
+        si
+
+        layout__get_session_rows__leaves_the_runs_and_pull_requests_their_rows() is
+            @test()
+
+            let rows = LAYOUT.get_session_rows(40, 6, 8);
+
+            Assert.are_equal(40 - LAYOUT.panel_furniture_rows - 6 - 8, rows);
+        si
+
+        // A short window still shows some sessions: the panel overflows rather
+        // than vanishing.
+        layout__get_session_rows__never_falls_below_its_floor() is
+            @test()
+
+            Assert.are_equal(LAYOUT.minimum_session_rows, LAYOUT.get_session_rows(12, 6, 8));
+        si
+
+        layout__get_capped__limits_a_count_to_the_cap() is
+            @test()
+
+            Assert.are_equal(3, LAYOUT.get_capped(10, 3));
+            Assert.are_equal(2, LAYOUT.get_capped(2, 3));
+        si
+    si
+
+    class LINE_BUILDER_TESTS is
+        @test()
+
+        init() is si
+
+        line_builder__try_append__accepts_segments_while_they_fit() is
+            @test()
+
+            let line = LINE_BUILDER(10);
+
+            Assert.is_true(line.try_append(5, "hello"));
+            Assert.is_true(line.try_append(5, "world"));
+            Assert.are_equal("helloworld", line.to_string());
+        si
+
+        line_builder__try_append__refuses_a_segment_that_would_overrun() is
+            @test()
+
+            let line = LINE_BUILDER(10);
+
+            line.try_append(8, "12345678");
+
+            Assert.is_false(line.try_append(5, "12345"));
+            Assert.are_equal("12345678", line.to_string());
+        si
+
+        // A refused segment must not consume the room a later, smaller one
+        // could still use.
+        line_builder__try_append__still_accepts_a_smaller_segment_after_refusing_one() is
+            @test()
+
+            let line = LINE_BUILDER(10);
+
+            line.try_append(8, "12345678");
+            line.try_append(5, "12345");
+
+            Assert.is_true(line.try_append(2, "ab"));
+            Assert.are_equal("12345678ab", line.to_string());
+        si
+
+        // Colour sequences occupy characters but no columns, which is why the
+        // width is supplied rather than measured.
+        line_builder__try_append__counts_the_supplied_width_not_the_text_length() is
+            @test()
+
+            let line = LINE_BUILDER(4);
+
+            Assert.is_true(line.try_append(4, SCREEN.red("busy")));
+            Assert.are_equal(0, line.remaining);
+        si
+
+        line_builder__remaining__reports_the_unused_width() is
+            @test()
+
+            let line = LINE_BUILDER(10);
+
+            line.try_append(4, "abcd");
+
+            Assert.are_equal(6, line.remaining);
+            Assert.are_equal(4, line.used);
+        si
+    si
+si

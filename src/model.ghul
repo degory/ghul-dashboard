@@ -71,16 +71,7 @@ namespace Dashboard is
         memory_used_kb: long => memory_total_kb - memory_available_kb;
         swap_used_kb: long => swap_total_kb - swap_free_kb;
 
-        memory_percent: double => get_percent(memory_used_kb, memory_total_kb);
-        swap_percent: double => get_percent(swap_used_kb, swap_total_kb);
-
-        get_percent(used: long, total: long) -> double static is
-            if total <= 0L then
-                return 0.0D;
-            fi
-
-            return cast double(used) * 100.0D / cast double(total);
-        si
+        memory_percent: double => FORMAT.ratio(memory_used_kb, memory_total_kb);
 
         init() is
             core_percents = [];
@@ -94,13 +85,11 @@ namespace Dashboard is
         pid: int;
         name: string;
         processor_percent: double;
-        memory_kb: long;
 
-        init(pid: int, name: string, processor_percent: double, memory_kb: long) is
+        init(pid: int, name: string, processor_percent: double) is
             self.pid = pid;
             self.name = name;
             self.processor_percent = processor_percent;
-            self.memory_kb = memory_kb;
         si
     si
 

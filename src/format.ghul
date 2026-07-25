@@ -1,0 +1,136 @@
+namespace Dashboard is
+    // Turning numbers into the short strings the panels show. Pure, so the
+    // awkward cases — a zero timestamp, a value over 100%, a size on a unit
+    // boundary — can be checked directly.
+    class FORMAT is
+        // Compact age of a millisecond timestamp against a reference time:
+        // seconds under a minute, then minutes, then hours. A zero timestamp
+        // means "never", which reads better as nothing than as a number.
+        age(at: long, now: long) -> string static is
+            if at <= 0L then
+                return "";
+            fi
+
+            let seconds = (now - at) / 1000L;
+
+            if seconds < 0L then
+                return "";
+            elif seconds < 60L then
+                return "{seconds}s";
+            elif seconds < 3600L then
+                return "{seconds / 60L}m";
+            fi
+
+            return "{seconds / 3600L}h";
+        si
+
+        size(kilobytes: long) -> string static is
+            if kilobytes >= 1048576L then
+                return "{(cast double(kilobytes) / 1048576.0D).to_string("0.0")}G";
+            elif kilobytes >= 1024L then
+                return "{(cast double(kilobytes) / 1024.0D).to_string("0")}M";
+            fi
+
+            return "{kilobytes}K";
+        si
+
+        percent(value: double) -> string static =>
+            "{value.to_string("0")}%".pad_left(4);
+
+        ratio(numerator: long, denominator: long) -> double static is
+            if denominator <= 0L then
+                return 0.0D;
+            fi
+
+            return cast double(numerator) * 100.0D / cast double(denominator);
+        si
+    si
+
+    // Assembles a line from segments, dropping any that would not fit.
+    //
+    // Colour sequences occupy no columns but plenty of characters, so a segment's
+    // visible width is supplied rather than measured. Sizing arithmetic decides
+    // how wide things should be; this guarantees the result fits whether or not
+    // that arithmetic was right.
+    class LINE_BUILDER is
+        _width: int;
+        _used: int;
+        _text: System.Text.StringBuilder;
+
+        used: int => _used;
+        remaining: int => _width - _used;
+
+        init(width: int) is
+            _width = width;
+            _text = System.Text.StringBuilder();
+        si
+
+        // Returns whether the segment was added, so a caller can tell what the
+        // line ended up carrying.
+        try_append(visible_width: int, text: string) -> bool is
+            if _used + visible_width > _width then
+                return false;
+            fi
+
+            _text.append(text);
+
+            _used = _used + visible_width;
+
+            return true;
+        si
+
+        to_string() -> string => _text.to_string();
+    si
+
+    // The one bar builder. Both the load meters and the test-run progress bars
+    // come through here, which is the only way they stay the same shape.
+    class METER is
+        filled_character: char static => '#';
+        empty_character: char static => '.';
+
+        // Bands the meters are coloured by, and that the per-core cells stand
+        // in for.
+        busy_percent: double static => 80.0D;
+        working_percent: double static => 50.0D;
+        active_percent: double static => 20.0D;
+
+        bar(percent: double, width: int) -> string static is
+            let filled mut = cast int(percent * cast double(width) / 100.0D);
+
+            if filled < 0 then
+                filled = 0;
+            elif filled > width then
+                filled = width;
+            fi
+
+            return "{"".pad_right(filled, filled_character)}{"".pad_right(width - filled, empty_character)}";
+        si
+
+        painted_bar(percent: double, width: int) -> string static =>
+            paint(bar(percent, width), percent);
+
+        paint(text: string, percent: double) -> string static is
+            if percent >= busy_percent then
+                return SCREEN.red(text);
+            elif percent >= working_percent then
+                return SCREEN.yellow(text);
+            fi
+
+            return SCREEN.green(text);
+        si
+
+        // One cell standing in for a core, shaded by band, so a row of them
+        // reads as a profile rather than a number.
+        core_cell(percent: double) -> string static is
+            if percent >= busy_percent then
+                return SCREEN.red("#");
+            elif percent >= working_percent then
+                return SCREEN.yellow("+");
+            elif percent >= active_percent then
+                return SCREEN.green("-");
+            fi
+
+            return SCREEN.dim(".");
+        si
+    si
+si

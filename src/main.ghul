@@ -62,9 +62,9 @@ namespace Dashboard is
 
                 let snapshot = collector.collect().result;
 
-                collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
+                collector.resolve_locations(snapshot);
 
-                for line in RENDERER(view).render(snapshot) do
+                for line in RENDERER(view, now()).render(snapshot) do
                     Std.write_line(line);
                 od
 
@@ -81,7 +81,7 @@ namespace Dashboard is
 
                     // Locations that need a transcript read are resolved after
                     // the first paint, so a cold start shows something at once.
-                    collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
+                    collector.resolve_locations(snapshot);
 
                     let sessions = snapshot.sessions | .collect_list();
 
@@ -99,7 +99,7 @@ namespace Dashboard is
                         view.selected_pid = sessions[0].pid;
                     fi
 
-                    screen.paint(RENDERER(view).render(snapshot));
+                    screen.paint(RENDERER(view, now()).render(snapshot));
 
                     if handle_keys(screen, view, sessions, interval) then
                         break;
@@ -188,7 +188,7 @@ namespace Dashboard is
 
             candidates.add(session.pid);
 
-            if SHELL.find_ancestor(System.Environment.process_id, candidates) > 0 then
+            if PROCESS_TREE.find_ancestor(System.Environment.process_id, candidates) > 0 then
                 view.message = "that session is running this dashboard";
                 return;
             fi
@@ -204,7 +204,7 @@ namespace Dashboard is
 
             view.clear_pending_kill();
 
-            let output = SHELL.run("kill", ["-TERM", "{pid}"]).result;
+            let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"]).result;
 
             if string.is_null_or_white_space(output) then
                 view.message = "sent SIGTERM to {pid}";
@@ -256,6 +256,9 @@ namespace Dashboard is
 
             return null;
         si
+
+        now() -> long static =>
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
 
         write_usage() static is
             Std.write_line("usage: ghul-dashboard [--interval <seconds>] [--once]");

@@ -1,0 +1,190 @@
+namespace Tests is
+    use Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+
+    use Collections.MutableList;
+    use Collections.LIST;
+
+    use Dashboard;
+
+    class VIEW_TESTS is
+        @test()
+
+        init() is si
+
+        session(pid: int, updated_at: long) -> SESSION static is
+            let result = SESSION();
+
+            result.pid = pid;
+            result.status_updated_at = updated_at;
+            result.status = "idle";
+            result.name = "session-{pid}";
+
+            return result;
+        si
+
+        three_sessions() -> MutableList[SESSION] static is
+            let result = LIST[SESSION]();
+
+            result.add(session(100, 3000L));
+            result.add(session(200, 2000L));
+            result.add(session(300, 1000L));
+
+            return result;
+        si
+
+        view__move__steps_down_the_list() is
+            @test()
+
+            let sessions = three_sessions();
+
+            let view = VIEW();
+
+            view.selected_pid = 100;
+
+            view.move(sessions, 1);
+
+            Assert.are_equal(200, view.selected_pid);
+        si
+
+        view__move__clamps_at_both_ends() is
+            @test()
+
+            let sessions = three_sessions();
+
+            let view = VIEW();
+
+            view.selected_pid = 100;
+
+            view.move(sessions, -1);
+
+            Assert.are_equal(100, view.selected_pid);
+
+            view.selected_pid = 300;
+
+            view.move(sessions, 1);
+
+            Assert.are_equal(300, view.selected_pid);
+        si
+
+        // Rows reorder as sessions become active. Tracking a pid rather than a
+        // row index is what stops the selection landing on a different session.
+        view__get_selected__follows_a_session_through_a_reorder() is
+            @test()
+
+            let sessions = three_sessions();
+
+            let view = VIEW();
+
+            view.selected_pid = 300;
+
+            let reordered = LIST[SESSION]();
+
+            reordered.add(sessions[2]);
+            reordered.add(sessions[0]);
+            reordered.add(sessions[1]);
+
+            Assert.are_equal(300, view.get_selected(reordered)!.pid);
+            Assert.are_equal(0, view.get_selected_index(reordered));
+        si
+
+        // The selected session exited between frames.
+        view__move__given_a_selection_that_has_vanished__lands_on_the_first_row() is
+            @test()
+
+            let sessions = three_sessions();
+
+            let view = VIEW();
+
+            view.selected_pid = 999;
+
+            view.move(sessions, 1);
+
+            Assert.are_equal(100, view.selected_pid);
+        si
+
+        view__get_selected_index__given_a_selection_that_has_vanished__is_negative() is
+            @test()
+
+            let view = VIEW();
+
+            view.selected_pid = 999;
+
+            Assert.are_equal(-1, view.get_selected_index(three_sessions()));
+        si
+
+        view__move__given_no_sessions__clears_the_selection() is
+            @test()
+
+            let view = VIEW();
+
+            view.selected_pid = 100;
+
+            view.move(LIST[SESSION](), 1);
+
+            Assert.are_equal(0, view.selected_pid);
+        si
+
+        view__clear_pending_kill__forgets_an_armed_confirmation() is
+            @test()
+
+            let view = VIEW();
+
+            view.pending_kill_pid = 100;
+
+            view.clear_pending_kill();
+
+            Assert.are_equal(0, view.pending_kill_pid);
+        si
+    si
+
+    class MOST_RECENTLY_ACTIVE_TESTS is
+        @test()
+
+        init() is si
+
+        session(pid: int, updated_at: long) -> SESSION static is
+            let result = SESSION();
+
+            result.pid = pid;
+            result.status_updated_at = updated_at;
+
+            return result;
+        si
+
+        most_recently_active__compare__orders_the_more_recent_session_first() is
+            @test()
+
+            let order = MOST_RECENTLY_ACTIVE();
+
+            Assert.is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0);
+            Assert.is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0);
+        si
+
+        // A total order keeps equally-recent rows from swapping between frames
+        // and moving under the selection.
+        most_recently_active__compare__breaks_ties_by_pid() is
+            @test()
+
+            let order = MOST_RECENTLY_ACTIVE();
+
+            Assert.is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0);
+            Assert.are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
+        si
+
+        most_recently_active__sort__puts_the_most_recently_active_at_the_top() is
+            @test()
+
+            let sessions = LIST[SESSION]();
+
+            sessions.add(session(1, 1000L));
+            sessions.add(session(2, 3000L));
+            sessions.add(session(3, 2000L));
+
+            sessions.sort(MOST_RECENTLY_ACTIVE());
+
+            Assert.are_equal(2, sessions[0].pid);
+            Assert.are_equal(3, sessions[1].pid);
+            Assert.are_equal(1, sessions[2].pid);
+        si
+    si
+si

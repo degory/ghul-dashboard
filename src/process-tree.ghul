@@ -1,0 +1,83 @@
+namespace Dashboard is
+    use Collections.SET;
+
+    // Questions about running processes, answered from /proc.
+    class PROCESS_TREE is
+        // A process directory exists for exactly as long as the process does.
+        is_alive(pid: int) -> bool static =>
+            IO.Directory.exists("/proc/{pid}");
+
+        parent_of(pid: int) -> int static is
+            let stat = PROCESS_STAT.parse(FILES.read_text("/proc/{pid}/stat"));
+
+            if !stat? then
+                return 0;
+            fi
+
+            return stat.parent_pid;
+        si
+
+        // The deepest ancestor of `pid` that is in `candidates`, or zero. This is
+        // how a test run is attributed to the session that started it: the run's
+        // process is a descendant of the session's, several hops down through
+        // shells and build tools.
+        //
+        // The hop limit is a guard against a cycle, which cannot happen in a
+        // well-formed process tree but would hang the frame if it did.
+        maximum_hops: int static => 32;
+
+        find_ancestor(pid: int, candidates: SET[int]) -> int static is
+            let current mut = pid;
+
+            let hops mut = 0;
+
+            while current > 1 /\ hops < maximum_hops do
+                if candidates.contains(current) then
+                    return current;
+                fi
+
+                let parent = parent_of(current);
+
+                if parent <= 0 then
+                    return 0;
+                fi
+
+                current = parent;
+
+                hops = hops + 1;
+            od
+
+            return 0;
+        si
+
+        // Every live process, by pid. /proc holds a numerically-named directory
+        // per process alongside its other entries.
+        list_pids() -> Collections.Iterable[int] static is
+            let result = Collections.LIST[int]();
+
+            for directory in FILES.list_directories("/proc") do
+                let name = FILES.name_of(directory);
+
+                if is_all_digits(name) then
+                    result.add(TEXT.to_int(name));
+                fi
+            od
+
+            return result;
+        si
+
+        is_all_digits(text: string) -> bool static is
+            if string.is_null_or_empty(text) then
+                return false;
+            fi
+
+            for c in text do
+                if !char.is_digit(c) then
+                    return false;
+                fi
+            od
+
+            return true;
+        si
+    si
+si
