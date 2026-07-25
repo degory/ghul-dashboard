@@ -1,0 +1,118 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use Collections.Iterable;
+    use Collections.MutableList;
+    use Collections.LIST;
+
+    use IO.Path;
+
+    use System.Text.Json.JsonSerializer;
+    use System.Text.Json.JsonSerializerOptions;
+    use System.Text.Json.JsonNamingPolicy;
+
+    // Claude Code writes its session records with camelCase keys, so the policy
+    // has to bridge ghūl's member naming rather than merely adjust the first
+    // letter, which is all the built-in camel-case policy does.
+    class SNAKE_TO_CAMEL_CASE: JsonNamingPolicy is
+        init() is si
+
+        convert_name(name: string) -> string is
+            let result = System.Text.StringBuilder();
+
+            let capitalize mut = false;
+
+            for c in name do
+                if c == '_' then
+                    capitalize = true;
+                elif capitalize then
+                    result.append(char.to_upper(c));
+                    capitalize = false;
+                else
+                    result.append(c);
+                fi
+            od
+
+            return result.to_string();
+        si
+    si
+
+    // Most recently active first. A function value cannot be handed to `sort`
+    // as a comparison, so the ordering is a named comparator — see ghul#1772.
+    class MOST_RECENTLY_ACTIVE: Collections.Comparer[SESSION] is
+        init() is si
+
+        // The interface takes optionals, so absent entries have to be ordered
+        // too. They never arise here — the list is built from live sessions —
+        // and sorting them last keeps the comparison total either way.
+        compare(a: SESSION?, b: SESSION?) -> int is
+            if !a? then
+                return if b? then 1; else 0; fi;
+            elif !b? then
+                return -1;
+            fi
+
+            if a.status_updated_at > b.status_updated_at then
+                return -1;
+            elif a.status_updated_at < b.status_updated_at then
+                return 1;
+            fi
+
+            // Equal timestamps fall back to pid so the order is total, and rows
+            // do not swap under the selection between frames.
+            return a.pid - b.pid;
+        si
+    si
+
+    // Reads the live Claude Code sessions from the per-process records the
+    // client writes.
+    class SESSION_SOURCE is
+        _directory: string;
+        _options: JsonSerializerOptions;
+        _order: MOST_RECENTLY_ACTIVE;
+
+        init(home: string) is
+            _directory = Path.join(home, ".claude", "sessions");
+
+            // Fields are deliberately not included: the record's members are
+            // properties, and including fields would emit each property's
+            // backing field alongside it.
+            _options = JsonSerializerOptions();
+            _options.property_naming_policy = SNAKE_TO_CAMEL_CASE();
+
+            _order = MOST_RECENTLY_ACTIVE();
+        si
+
+        collect() -> MutableList[SESSION] is
+            let result = LIST[SESSION]();
+
+            for path in FILES.list(_directory, "*.json") do
+                let session = read(path);
+
+                // A record outlives the process it describes, so liveness is
+                // decided by the process, not the file.
+                if session? /\ PROCESS_TREE.is_alive(session.pid) then
+                    result.add(session);
+                fi
+            od
+
+            result.sort(_order);
+
+            return result;
+        si
+
+        read(path: string) -> SESSION? is
+            let text = FILES.read_text(path);
+
+            if string.is_null_or_white_space(text) then
+                return null;
+            fi
+
+            try
+                return JsonSerializer.deserialize[SESSION](text, _options);
+            catch ex: Exception
+                return null;
+            yrt
+        si
+    si
+si

@@ -1,0 +1,137 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.MutableList;
+    use Collections.MutableMap;
+    use Collections.LIST;
+    use Collections.MAP;
+    use Collections.SET;
+
+    use IO.File;
+    use IO.Path;
+
+    // Works out which worktree each session is working in.
+    //
+    // A session's own directory is where it was launched, which for this
+    // workspace is the umbrella directory rather than a worktree, so it has to be
+    // derived. A session with a test run in flight is pinned exactly: the run's
+    // process is a descendant of the session's. Otherwise the last directory
+    // recorded in the session's transcript is the best available answer.
+    class SESSION_LOCATIONS is
+        // Transcripts reach tens of megabytes and only the end is interesting.
+        transcript_tail_bytes: long static => 262144L;
+
+        _workspace: string;
+        _projects_directory: string;
+
+        init(workspace: string, home: string) is
+            _workspace = workspace;
+            _projects_directory = Path.join(home, ".claude", "projects");
+        si
+
+        // Pins what can be pinned from the running test processes. Cheap: no
+        // file reading beyond /proc.
+        attribute_from_runs(
+            sessions: Iterable[SESSION],
+            runs: Iterable[RUN],
+            worktrees: Iterable[WORKTREE]
+        ) is
+            let pids = SET[int]();
+
+            for session in sessions do
+                pids.add(session.pid);
+            od
+
+            let owners = MAP[int,string]();
+
+            for run in runs do
+                let owner = PROCESS_TREE.find_ancestor(run.pid, pids);
+
+                if owner > 0 then
+                    owners[owner] = run.cwd;
+                fi
+            od
+
+            for session in sessions do
+                if owners.contains_key(session.pid) then
+                    session.where = describe(owners[session.pid], worktrees);
+                fi
+            od
+        si
+
+        // Reads a transcript per unattributed session, so it is kept apart from
+        // the cheap pass and only runs for what that pass left over.
+        attribute_from_transcripts(sessions: Iterable[SESSION], worktrees: Iterable[WORKTREE]) is
+            for session in sessions do
+                if session.where? then
+                    continue;
+                fi
+
+                let directory = read_last_directory(session);
+
+                if directory? then
+                    session.where = describe(directory, worktrees);
+                fi
+            od
+        si
+
+        read_last_directory(session: SESSION) -> string? is
+            if !session.cwd? \/ !session.session_id? then
+                return null;
+            fi
+
+            // Transcripts live in a directory named for the session's own
+            // directory with every path separator replaced by a dash.
+            let project = session.cwd.replace("/", "-");
+
+            let path = Path.join(_projects_directory, project, "{session.session_id}.jsonl");
+
+            if !File.exists(path) then
+                return null;
+            fi
+
+            return find_last_directory(FILES.read_tail(path, transcript_tail_bytes));
+        si
+
+        // Each transcript entry carries the directory it ran in. The last one
+        // wins, so this scans backwards from the end of the window.
+        find_last_directory(tail: string) -> string? static is
+            let marker = "\"cwd\":\"";
+
+            let at = tail.last_index_of(marker);
+
+            if at < 0 then
+                return null;
+            fi
+
+            let from = at + marker.length;
+            let to = tail.index_of('"', from);
+
+            if to < 0 then
+                return null;
+            fi
+
+            return tail.substring(from, to - from);
+        si
+
+        // Names a directory as briefly as it can be named unambiguously: a
+        // worktree by its label, anything else under the workspace by its
+        // relative path.
+        describe(path: string, worktrees: Iterable[WORKTREE]) -> string is
+            for worktree in worktrees do
+                if path =~ worktree.path \/ path.starts_with("{worktree.path}/") then
+                    return worktree.label;
+                fi
+            od
+
+            if path.starts_with("{_workspace}/") then
+                return path.substring(_workspace.length + 1);
+            fi
+
+            if path =~ _workspace then
+                return ".";
+            fi
+
+            return path;
+        si
+    si
+si

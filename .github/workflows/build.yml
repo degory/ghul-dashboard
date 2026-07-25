@@ -24,6 +24,9 @@ jobs:
       - name: Build
         run: dotnet build ghul-dashboard.ghulproj
 
+      - name: Unit tests
+        run: dotnet test tests
+
       # Renders one frame and checks the panel headings are present. There is
       # no workspace on the runner, so this exercises the argument handling and
       # the not-a-workspace path rather than any collector.

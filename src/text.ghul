@@ -1,0 +1,70 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use Collections.Iterable;
+    use Collections.LIST;
+
+    // Text handling shared by the parsers. Everything here is a pure function
+    // of its argument, which is what makes the parsers testable without a
+    // machine to read.
+    class TEXT is
+        // Splits on any line ending and drops blank lines: every caller is
+        // parsing line-oriented output.
+        lines(text: string?) -> Iterable[string] static is
+            let result = LIST[string]();
+
+            if string.is_null_or_empty(text) then
+                return result;
+            fi
+
+            for line in text!.split(['\n']) do
+                let trimmed = line.trim_end(['\r']);
+
+                if !string.is_null_or_empty(trimmed) then
+                    result.add(trimmed);
+                fi
+            od
+
+            return result;
+        si
+
+        // Splits on spaces, dropping the empty strings that runs of spaces
+        // produce — /proc pads its columns.
+        words(text: string?) -> Iterable[string] static is
+            let result = LIST[string]();
+
+            if string.is_null_or_empty(text) then
+                return result;
+            fi
+
+            for word in text!.split([' ', '\t']) do
+                if !string.is_null_or_empty(word) then
+                    result.add(word);
+                fi
+            od
+
+            return result;
+        si
+
+        // Absent or malformed input reads as zero rather than throwing: these
+        // parse machine-generated files, and a torn read is not worth a crash.
+        to_long(text: string?) -> long static is
+            try
+                return long.parse(text!);
+            catch ex: Exception
+                return 0L;
+            yrt
+        si
+
+        to_int(text: string?) -> int static =>
+            cast int(to_long(text));
+
+        to_double(text: string?) -> double static is
+            try
+                return double.parse(text!);
+            catch ex: Exception
+                return 0.0D;
+            yrt
+        si
+    si
+si

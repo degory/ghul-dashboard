@@ -1,0 +1,132 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.LIST;
+
+    use IO.Path;
+    use IO.File;
+
+    // The open pull requests across the workspace's repositories, from one `gh`
+    // search.
+    //
+    // That costs a network round-trip, so it refreshes on its own slower cadence
+    // and every frame in between redraws the last answer. A failed call keeps the
+    // previous result rather than reporting none, since an empty list would read
+    // as "nothing open" — which is a different and more alarming statement.
+    class PULL_REQUEST_SOURCE is
+        refresh_interval_ms: long static => 120000L;
+
+        _workspace: WORKTREE_SOURCE;
+
+        // Discovered once: the set of checkouts does not change under us.
+        _scope: Iterable[string]?;
+
+        _pull_requests: Iterable[PULL_REQUEST];
+        _fetched_at: long;
+
+        fetched_at: long => _fetched_at;
+
+        init(workspace: WORKTREE_SOURCE) is
+            _workspace = workspace;
+            _pull_requests = LIST[PULL_REQUEST]();
+        si
+
+        collect(now: long) -> Tasks.TASK[Iterable[PULL_REQUEST]] is
+            if _fetched_at > 0L /\ now - _fetched_at < refresh_interval_ms then
+                return _pull_requests;
+            fi
+
+            let scope = await get_scope();
+
+            if scope| .count() == 0 then
+                return _pull_requests;
+            fi
+
+            let output = await search(scope);
+
+            if string.is_null_or_white_space(output) then
+                return _pull_requests;
+            fi
+
+            _pull_requests = PULL_REQUEST_ROWS.parse(output) | .collect_list();
+            _fetched_at = now;
+
+            return _pull_requests;
+        si
+
+        // Every brace is doubled: a single brace opens a string interpolation,
+        // and GraphQL is nothing but braces.
+        query: string static =>
+            "query($q:String!){{search(query:$q,type:ISSUE,first:60){{nodes{{... on PullRequest{{number headRefName repository{{name}} reviewDecision commits(last:1){{nodes{{commit{{statusCheckRollup{{state}}}}}}}}}}}}}}}}";
+
+        // `gh` reduces the response to tab-separated rows, so nothing here has
+        // to walk a JSON document.
+        filter: string static =>
+            ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv";
+
+        search(scope: Iterable[string]) -> Tasks.TASK[string] is
+            let terms = scope| .to_string(" ");
+
+            return
+                await PROCESS_RUNNER.run(
+                    get_gh_path(),
+                    ["api", "graphql", "-f", "q=is:pr is:open {terms}", "-f", "query={query}", "--jq", filter]
+                );
+        si
+
+        // The workspace's `gh` wrapper supplies the bot credentials, and it is
+        // only on PATH for interactive shells, so prefer it explicitly.
+        get_gh_path() -> string static is
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+
+            let wrapper = Path.join(home, ".local", "bin", "gh");
+
+            if File.exists(wrapper) then
+                return wrapper;
+            fi
+
+            return "gh";
+        si
+
+        get_scope() -> Tasks.TASK[Iterable[string]] is
+            if _scope? then
+                return _scope;
+            fi
+
+            let result = LIST[string]();
+
+            for repository in _workspace.list_repositories() do
+                let output = await PROCESS_RUNNER.run("git", ["-C", repository, "remote", "get-url", "origin"]);
+
+                for line in TEXT.lines(output) do
+                    let slug = get_repository_slug(line);
+
+                    if slug? then
+                        result.add("repo:{slug}");
+                    fi
+                od
+            od
+
+            _scope = result;
+
+            return result;
+        si
+
+        // Reduces either remote form — git@host:owner/name.git or
+        // https://host/owner/name — to owner/name.
+        get_repository_slug(url: string) -> string? static is
+            let trimmed mut = url.trim();
+
+            if trimmed.ends_with(".git") then
+                trimmed = trimmed.substring(0, trimmed.length - 4);
+            fi
+
+            let parts = trimmed.split(['/', ':']);
+
+            if parts.count < 2 then
+                return null;
+            fi
+
+            return "{parts[parts.count - 2]}/{parts[parts.count - 1]}";
+        si
+    si
+si

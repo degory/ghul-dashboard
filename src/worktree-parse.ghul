@@ -1,0 +1,29 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.LIST;
+
+    // Parses `git worktree list --porcelain`, which emits a paragraph per
+    // worktree: a `worktree <path>` line, then attributes, one of which is
+    // either `branch refs/heads/<name>` or a bare `detached`.
+    class WORKTREE_LIST is
+        detached_branch: string static => "(detached)";
+
+        parse(repository: string, text: string?) -> Iterable[WORKTREE] static is
+            let result = LIST[WORKTREE]();
+
+            let path mut = "";
+
+            for line in TEXT.lines(text) do
+                if line.starts_with("worktree ") then
+                    path = line.substring(9);
+                elif line.starts_with("branch refs/heads/") then
+                    result.add(WORKTREE(repository, path, line.substring(18)));
+                elif line =~ "detached" then
+                    result.add(WORKTREE(repository, path, detached_branch));
+                fi
+            od
+
+            return result;
+        si
+    si
+si
