@@ -2,11 +2,10 @@
   <ItemGroup>
     <PackageVersion Include="ghul.runtime" Version="5.8.1" />
 
-    <!-- Unit tests, pinned to the 3.x line the compiler's own tests use.
-         MSTest 4 gave every Assert.AreEqual overload trailing optional
-         parameters for the caller-expression messages, and ghūl cannot omit an
-         optional parameter, so no call with fewer than five arguments
-         resolves. -->
+    <!-- Unit tests, pinned to the 3.x line the compiler's own tests use. 4.x
+         expects the Microsoft.Testing.Platform runner, which generates the
+         executable's entry point, and a ghūl executable declares its own. See
+         the README for the other half of the story. -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="MSTest.TestAdapter" Version="3.2.0" />
     <PackageVersion Include="MSTest.TestFramework" Version="3.2.0" />

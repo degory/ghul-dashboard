@@ -78,10 +78,17 @@ containing spaces and parentheses, counters that go backwards when a core is
 hotplugged, a selection whose session has exited, a row at every width from 40
 columns up.
 
-MSTest is pinned to the 3.x line. MSTest 4 gave every `Assert.AreEqual` overload
-trailing optional parameters carrying the caller-expression messages, and ghūl
-cannot omit an optional parameter, so no call with fewer than five arguments
-resolves — for any argument type, not only strings.
+Assertions are global functions in `tests/src/assertions.ghul`, so the tests read
+as statements and no test file names MSTest directly.
+
+MSTest is pinned to the 3.x line. Two things stand in the way of 4.x, and only
+the first is about ghūl: every 4.x overload gained trailing optional parameters
+holding the caller-expression text it prints on failure, and ghūl cannot omit an
+optional parameter, so no call with fewer than five arguments resolves — for any
+argument type. Wrapping each assertion once, as above, handles that. The
+remaining obstacle is that 4.x expects the Microsoft.Testing.Platform runner,
+which generates the executable's entry point, and a ghūl executable declares its
+own.
 
 There are no integration tests. Covering the rest would mean faking `/proc`, a
 `~/.claude` directory and `git`/`gh`, and the seam that would make that possible

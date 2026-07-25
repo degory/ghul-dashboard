@@ -1,6 +1,4 @@
 namespace Tests is
-    use Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
-
     use Dashboard;
 
     class WORKTREE_LIST_TESTS is
@@ -16,10 +14,10 @@ namespace Tests is
 
             let worktrees = WORKTREE_LIST.parse("ghul", porcelain) | .collect_list();
 
-            Assert.are_equal(2, worktrees.count);
-            Assert.are_equal("/w/ghul", worktrees[0].path);
-            Assert.are_equal("main", worktrees[0].branch);
-            Assert.are_equal("claude/fix", worktrees[1].branch);
+            are_equal(2, worktrees.count);
+            are_equal("/w/ghul", worktrees[0].path);
+            are_equal("main", worktrees[0].branch);
+            are_equal("claude/fix", worktrees[1].branch);
         si
 
         worktree_list__parse__given_a_detached_worktree__names_it_as_detached() is
@@ -28,14 +26,14 @@ namespace Tests is
             let worktrees =
                 WORKTREE_LIST.parse("ghul", "worktree /w/x\nHEAD abc123\ndetached\n") | .collect_list();
 
-            Assert.are_equal(1, worktrees.count);
-            Assert.are_equal(WORKTREE_LIST.detached_branch, worktrees[0].branch);
+            are_equal(1, worktrees.count);
+            are_equal(WORKTREE_LIST.detached_branch, worktrees[0].branch);
         si
 
         worktree_list__parse__given_empty_input__finds_nothing() is
             @test()
 
-            Assert.are_equal(0, WORKTREE_LIST.parse("ghul", "")| .count());
+            are_equal(0, WORKTREE_LIST.parse("ghul", "")| .count());
         si
 
         // The primary checkout's directory is the repository name, so labelling
@@ -43,13 +41,13 @@ namespace Tests is
         worktree__label__names_a_primary_checkout_once() is
             @test()
 
-            Assert.are_equal("ghul", WORKTREE("ghul", "/w/ghul", "main").label);
+            are_equal("ghul", WORKTREE("ghul", "/w/ghul", "main").label);
         si
 
         worktree__label__names_a_worktree_by_repository_and_slug() is
             @test()
 
-            Assert.are_equal("ghul/fix", WORKTREE("ghul", "/w/worktrees/ghul/fix", "claude/fix").label);
+            are_equal("ghul/fix", WORKTREE("ghul", "/w/worktrees/ghul/fix", "claude/fix").label);
         si
     si
 
@@ -66,12 +64,12 @@ namespace Tests is
 
             let pull_requests = PULL_REQUEST_ROWS.parse(rows) | .collect_list();
 
-            Assert.are_equal(2, pull_requests.count);
-            Assert.are_equal(1771, pull_requests[0].number);
-            Assert.are_equal("claude/docs", pull_requests[0].branch);
-            Assert.are_equal("ghul", pull_requests[0].repository);
-            Assert.are_equal("APPROVED", pull_requests[0].review);
-            Assert.are_equal("SUCCESS", pull_requests[0].checks);
+            are_equal(2, pull_requests.count);
+            are_equal(1771, pull_requests[0].number);
+            are_equal("claude/docs", pull_requests[0].branch);
+            are_equal("ghul", pull_requests[0].repository);
+            are_equal("APPROVED", pull_requests[0].review);
+            are_equal("SUCCESS", pull_requests[0].checks);
         si
 
         // The dashboard watches this session's work, and a human's own branches
@@ -83,8 +81,8 @@ namespace Tests is
                 PULL_REQUEST_ROWS.parse("1\tmain\tghul\tNONE\tSUCCESS\n2\tclaude/x\tghul\tNONE\tSUCCESS\n")
                     | .collect_list();
 
-            Assert.are_equal(1, pull_requests.count);
-            Assert.are_equal(2, pull_requests[0].number);
+            are_equal(1, pull_requests.count);
+            are_equal(2, pull_requests[0].number);
         si
 
         // A short row is a truncated response, not a pull request with missing
@@ -92,21 +90,21 @@ namespace Tests is
         pull_request_rows__parse__skips_rows_with_too_few_columns() is
             @test()
 
-            Assert.are_equal(0, PULL_REQUEST_ROWS.parse("1\tclaude/x\tghul")| .count());
+            are_equal(0, PULL_REQUEST_ROWS.parse("1\tclaude/x\tghul")| .count());
         si
 
         pull_request_rows__parse__given_empty_input__finds_nothing() is
             @test()
 
-            Assert.are_equal(0, PULL_REQUEST_ROWS.parse("")| .count());
+            are_equal(0, PULL_REQUEST_ROWS.parse("")| .count());
         si
 
         pull_request__is_bad__holds_for_a_failed_check_or_requested_changes() is
             @test()
 
-            Assert.is_true(PULL_REQUEST(1, "claude/x", "ghul", "NONE", "FAILURE").is_bad);
-            Assert.is_true(PULL_REQUEST(1, "claude/x", "ghul", "CHANGES_REQUESTED", "SUCCESS").is_bad);
-            Assert.is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_bad);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "NONE", "FAILURE").is_bad);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "CHANGES_REQUESTED", "SUCCESS").is_bad);
+            is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_bad);
         si
 
         // A repository with no checks configured reports NONE, which should not
@@ -114,9 +112,9 @@ namespace Tests is
         pull_request__is_good__holds_for_approved_with_passing_or_absent_checks() is
             @test()
 
-            Assert.is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_good);
-            Assert.is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "NONE").is_good);
-            Assert.is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "PENDING").is_good);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_good);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "NONE").is_good);
+            is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "PENDING").is_good);
         si
     si
 
@@ -130,9 +128,9 @@ namespace Tests is
 
             let lines = TEXT.lines("one\r\n\ntwo\n\n") | .collect_list();
 
-            Assert.are_equal(2, lines.count);
-            Assert.are_equal("one", lines[0]);
-            Assert.are_equal("two", lines[1]);
+            are_equal(2, lines.count);
+            are_equal("one", lines[0]);
+            are_equal("two", lines[1]);
         si
 
         text__words__collapses_runs_of_spaces() is
@@ -140,9 +138,9 @@ namespace Tests is
 
             let words = TEXT.words("  a   b\tc ") | .collect_list();
 
-            Assert.are_equal(3, words.count);
-            Assert.are_equal("a", words[0]);
-            Assert.are_equal("c", words[2]);
+            are_equal(3, words.count);
+            are_equal("a", words[0]);
+            are_equal("c", words[2]);
         si
 
         // These read machine-generated files, where a torn read is normal and
@@ -150,9 +148,9 @@ namespace Tests is
         text__to_long__given_input_that_is_not_a_number__is_zero() is
             @test()
 
-            Assert.are_equal(0L, TEXT.to_long("banana"));
-            Assert.are_equal(0L, TEXT.to_long(null));
-            Assert.are_equal(42L, TEXT.to_long("42"));
+            are_equal(0L, TEXT.to_long("banana"));
+            are_equal(0L, TEXT.to_long(null));
+            are_equal(42L, TEXT.to_long("42"));
         si
     si
 si

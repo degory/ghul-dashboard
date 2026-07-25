@@ -1,0 +1,42 @@
+namespace Tests is
+    use MSTEST = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+
+    // Assertions, as global functions, so the tests read as statements and no
+    // test file names MSTest directly.
+    //
+    // The indirection earns its place on a version bump. MSTest 4 gave every
+    // overload trailing optional parameters holding the caller-expression text
+    // it prints on failure, and ghūl cannot omit an optional parameter — so on
+    // 4.x these bodies each pass the placeholders once, rather than every call
+    // site repeating them.
+
+    are_equal[T](expected: T, actual: T) is
+        MSTEST.are_equal[T](expected, actual);
+    si
+
+    are_equal[T](expected: T, actual: T, message: string) is
+        MSTEST.are_equal[T](expected, actual, message);
+    si
+
+    // Named apart from are_equal so a tolerance cannot be mistaken for a
+    // message, and so the generic overload above stays unambiguous.
+    are_close(expected: double, actual: double, tolerance: double) is
+        MSTEST.are_equal(expected, actual, tolerance);
+    si
+
+    is_true(condition: bool) is
+        MSTEST.is_true(condition);
+    si
+
+    is_false(condition: bool) is
+        MSTEST.is_false(condition);
+    si
+
+    is_null(value: object?) is
+        MSTEST.is_null(value);
+    si
+
+    is_not_null(value: object?) is
+        MSTEST.is_not_null(value);
+    si
+si

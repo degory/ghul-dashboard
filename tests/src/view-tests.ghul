@@ -1,6 +1,4 @@
 namespace Tests is
-    use Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
-
     use Collections.MutableList;
     use Collections.LIST;
 
@@ -43,7 +41,7 @@ namespace Tests is
 
             view.move(sessions, 1);
 
-            Assert.are_equal(200, view.selected_pid);
+            are_equal(200, view.selected_pid);
         si
 
         view__move__clamps_at_both_ends() is
@@ -57,13 +55,13 @@ namespace Tests is
 
             view.move(sessions, -1);
 
-            Assert.are_equal(100, view.selected_pid);
+            are_equal(100, view.selected_pid);
 
             view.selected_pid = 300;
 
             view.move(sessions, 1);
 
-            Assert.are_equal(300, view.selected_pid);
+            are_equal(300, view.selected_pid);
         si
 
         // Rows reorder as sessions become active. Tracking a pid rather than a
@@ -83,8 +81,8 @@ namespace Tests is
             reordered.add(sessions[0]);
             reordered.add(sessions[1]);
 
-            Assert.are_equal(300, view.get_selected(reordered)!.pid);
-            Assert.are_equal(0, view.get_selected_index(reordered));
+            are_equal(300, view.get_selected(reordered)!.pid);
+            are_equal(0, view.get_selected_index(reordered));
         si
 
         // The selected session exited between frames.
@@ -99,7 +97,7 @@ namespace Tests is
 
             view.move(sessions, 1);
 
-            Assert.are_equal(100, view.selected_pid);
+            are_equal(100, view.selected_pid);
         si
 
         view__get_selected_index__given_a_selection_that_has_vanished__is_negative() is
@@ -109,7 +107,7 @@ namespace Tests is
 
             view.selected_pid = 999;
 
-            Assert.are_equal(-1, view.get_selected_index(three_sessions()));
+            are_equal(-1, view.get_selected_index(three_sessions()));
         si
 
         view__move__given_no_sessions__clears_the_selection() is
@@ -121,7 +119,7 @@ namespace Tests is
 
             view.move(LIST[SESSION](), 1);
 
-            Assert.are_equal(0, view.selected_pid);
+            are_equal(0, view.selected_pid);
         si
 
         view__clear_pending_kill__forgets_an_armed_confirmation() is
@@ -133,7 +131,7 @@ namespace Tests is
 
             view.clear_pending_kill();
 
-            Assert.are_equal(0, view.pending_kill_pid);
+            are_equal(0, view.pending_kill_pid);
         si
     si
 
@@ -156,8 +154,8 @@ namespace Tests is
 
             let order = MOST_RECENTLY_ACTIVE();
 
-            Assert.is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0);
-            Assert.is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0);
+            is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0);
+            is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0);
         si
 
         // A total order keeps equally-recent rows from swapping between frames
@@ -167,8 +165,8 @@ namespace Tests is
 
             let order = MOST_RECENTLY_ACTIVE();
 
-            Assert.is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0);
-            Assert.are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
+            is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0);
+            are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
         si
 
         most_recently_active__sort__puts_the_most_recently_active_at_the_top() is
@@ -182,9 +180,9 @@ namespace Tests is
 
             sessions.sort(MOST_RECENTLY_ACTIVE());
 
-            Assert.are_equal(2, sessions[0].pid);
-            Assert.are_equal(3, sessions[1].pid);
-            Assert.are_equal(1, sessions[2].pid);
+            are_equal(2, sessions[0].pid);
+            are_equal(3, sessions[1].pid);
+            are_equal(1, sessions[2].pid);
         si
     si
 si
