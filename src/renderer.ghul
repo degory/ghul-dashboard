@@ -1,0 +1,246 @@
+namespace Dashboard is
+    use Collections.Iterable;
+    use Collections.MutableList;
+    use Collections.LIST;
+
+    // Composes a frame as plain lines. Kept apart from SCREEN so the layout can
+    // be exercised without a terminal.
+    class RENDERER is
+        _width: int;
+
+        init(width: int) is
+            _width = width;
+        si
+
+        render(snapshot: SNAPSHOT) -> Iterable[string] is
+            let lines = LIST[string]();
+
+            lines.add(
+                "{SCREEN.bold("ghul")} {SCREEN.dim(System.DateTime.now.to_string("HH:mm:ss"))}"
+            );
+
+            render_sessions(lines, snapshot);
+            render_runs(lines, snapshot);
+            render_pull_requests(lines, snapshot);
+
+            return lines;
+        si
+
+        heading(lines: MutableList[string], text: string) is
+            lines.add("");
+            lines.add(SCREEN.bold(text));
+        si
+
+        render_sessions(lines: MutableList[string], snapshot: SNAPSHOT) is
+            heading(lines, "sessions");
+
+            let sessions = snapshot.sessions | .collect_list();
+
+            if sessions.count == 0 then
+                lines.add("  {SCREEN.dim("none")}");
+                return;
+            fi
+
+            // Working sessions first: they are the ones worth looking at.
+            for session in sessions | .filter(s => is_working(s)) do
+                lines.add(format_session(session));
+            od
+
+            for session in sessions | .filter(s => !is_working(s)) do
+                lines.add(format_session(session));
+            od
+        si
+
+        is_working(session: SESSION) -> bool static =>
+            session.status? /\ (session.status =~ "busy" \/ session.status =~ "shell");
+
+        format_session(session: SESSION) -> string is
+            let marker mut = SCREEN.dim("-");
+            let status mut = SCREEN.dim(SCREEN.pad(session.status, 5));
+
+            if session.status? /\ session.status =~ "busy" then
+                marker = SCREEN.yellow("*");
+                status = SCREEN.yellow(SCREEN.pad(session.status, 5));
+            elif session.status? /\ session.status =~ "shell" then
+                marker = SCREEN.cyan("*");
+                status = SCREEN.cyan(SCREEN.pad(session.status, 5));
+            fi
+
+            let kind = if session.is_background then SCREEN.dim("bg  "); else "    "; fi;
+
+            let where =
+                if session.where? then
+                    SCREEN.blue(SCREEN.pad(session.where, 26));
+                else
+                    SCREEN.dim(SCREEN.pad("-", 26));
+                fi;
+
+            let name = SCREEN.pad(session.name, 34);
+
+            let age = SCREEN.dim(format_age(session.status_updated_at));
+
+            return "  {marker} {name} {kind} {status} {where} {age}";
+        si
+
+        render_runs(lines: MutableList[string], snapshot: SNAPSHOT) is
+            heading(lines, "test runs");
+
+            let runs = snapshot.runs | .collect_list();
+
+            if runs.count == 0 then
+                lines.add("  {SCREEN.dim("none in progress")}");
+                return;
+            fi
+
+            for run in runs do
+                let where = describe_run_location(run, snapshot);
+
+                let suites = SCREEN.dim(run.suites| .to_string(" "));
+                let elapsed = SCREEN.dim("{run.elapsed_seconds}s");
+                let pid = SCREEN.dim("pid {run.pid}");
+
+                lines.add("  {SCREEN.bold(where)}  {suites}  {elapsed}  {pid}");
+
+                lines.add("    {format_bar(run)}");
+
+                // In-flight tests, capped so one run cannot crowd out the rest
+                // of the frame.
+                for test in run.running | .take(4) do
+                    lines.add("      {SCREEN.dim(SCREEN.clip(test, _width - 6))}");
+                od
+            od
+        si
+
+        describe_run_location(run: RUN, snapshot: SNAPSHOT) -> string static is
+            for worktree in snapshot.worktrees do
+                if run.cwd =~ worktree.path then
+                    return worktree.label;
+                fi
+            od
+
+            return run.cwd.substring(run.cwd.last_index_of('/') + 1);
+        si
+
+        format_bar(run: RUN) -> string static is
+            let width = 32;
+
+            let filled mut = run.percent * width / 100;
+
+            if filled > width then
+                filled = width;
+            fi
+
+            let bar = "{"#".pad_right(filled, '#')}{"".pad_right(width - filled, '.')}";
+
+            let counts = "{run.percent}%".pad_left(4);
+
+            let body = "{bar} {counts}  {run.completed}/{run.total}";
+
+            let coloured =
+                if run.failed > 0 then
+                    SCREEN.red(body);
+                elif run.is_done then
+                    SCREEN.green(body);
+                else
+                    SCREEN.yellow(body);
+                fi;
+
+            let detail mut = "  {SCREEN.green("pass {run.passed}")}";
+
+            if run.failed > 0 then
+                detail = "{detail}  {SCREEN.red("fail {run.failed}")}";
+            fi
+
+            if run.skipped > 0 then
+                detail = "{detail}  {SCREEN.dim("skip {run.skipped}")}";
+            fi
+
+            if run.is_done then
+                detail = "{detail}  {SCREEN.dim("done")}";
+            fi
+
+            return "{coloured}{detail}";
+        si
+
+        render_pull_requests(lines: MutableList[string], snapshot: SNAPSHOT) is
+            heading(lines, "pull requests");
+
+            if snapshot.pull_requests_fetched_at == 0L then
+                lines.add("  {SCREEN.dim("fetching...")}");
+                return;
+            fi
+
+            let pull_requests = snapshot.pull_requests | .collect_list();
+
+            if pull_requests.count == 0 then
+                lines.add("  {SCREEN.dim("none open")}");
+                return;
+            fi
+
+            for pull_request in pull_requests do
+                lines.add(format_pull_request(pull_request));
+            od
+        si
+
+        format_pull_request(pull_request: PULL_REQUEST) -> string static is
+            let marker mut = SCREEN.yellow("*");
+
+            if pull_request.is_bad then
+                marker = SCREEN.red("!");
+            elif pull_request.is_good then
+                marker = SCREEN.green("+");
+            fi
+
+            let repository = SCREEN.dim(SCREEN.pad(pull_request.repository, 14));
+            let number = SCREEN.pad("#{pull_request.number}", 6);
+            let branch = SCREEN.pad(pull_request.branch, 38);
+
+            let checks = format_checks(pull_request.checks);
+            let review = format_review(pull_request.review);
+
+            return "  {marker} {repository} {number} {branch} {checks}  {review}";
+        si
+
+        format_checks(state: string) -> string static is
+            if state =~ "SUCCESS" then
+                return SCREEN.green(SCREEN.pad("ci ok", 8));
+            elif state =~ "FAILURE" \/ state =~ "ERROR" then
+                return SCREEN.red(SCREEN.pad("ci fail", 8));
+            elif state =~ "PENDING" then
+                return SCREEN.yellow(SCREEN.pad("ci ...", 8));
+            fi
+
+            return SCREEN.dim(SCREEN.pad("ci -", 8));
+        si
+
+        format_review(decision: string) -> string static is
+            if decision =~ "APPROVED" then
+                return SCREEN.green("approved");
+            elif decision =~ "CHANGES_REQUESTED" then
+                return SCREEN.red("changes requested");
+            fi
+
+            return SCREEN.yellow("review pending");
+        si
+
+        // Compact age of a millisecond timestamp: seconds under a minute, then
+        // minutes, then hours.
+        format_age(at: long) -> string static is
+            if at <= 0L then
+                return "";
+            fi
+
+            let seconds = (System.DateTimeOffset.utc_now.to_unix_time_milliseconds() - at) / 1000L;
+
+            if seconds < 0L then
+                return "";
+            elif seconds < 60L then
+                return "{seconds}s";
+            elif seconds < 3600L then
+                return "{seconds / 60L}m";
+            fi
+
+            return "{seconds / 3600L}h";
+        si
+    si
+si

@@ -1,0 +1,158 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use Collections.Iterable;
+    use Collections.LIST;
+
+    use IO.File;
+    use IO.StreamReader;
+
+    use System.Diagnostics.Process;
+    use System.Diagnostics.ProcessStartInfo;
+
+    // Subprocess and filesystem helpers. Everything here is async so a frame's
+    // collectors can run concurrently: `gh` over the network dominates a
+    // refresh, and there is no reason for the local reads to queue behind it.
+    class SHELL is
+        // Captures stdout, ignoring the exit status: every caller treats a
+        // failed command as "no data", which empty output already expresses.
+        run(path: string, arguments: Iterable[string]) -> Tasks.TASK[string] static is
+            try
+                let start_info = ProcessStartInfo();
+
+                start_info.file_name = path;
+
+                for argument in arguments do
+                    start_info.argument_list.add(argument);
+                od
+
+                start_info.redirect_standard_output = true;
+                start_info.redirect_standard_error = true;
+                start_info.use_shell_execute = false;
+
+                let process = Process.start(start_info);
+
+                if !process? then
+                    return "";
+                fi
+
+                let output = await process.standard_output.read_to_end_async();
+
+                // Reading stdout to end means the child has already closed it,
+                // so this reaps an all-but-exited process.
+                process.wait_for_exit(5000);
+
+                return output;
+            catch ex: Exception
+                return "";
+            yrt
+        si
+
+        // Only the end of a transcript is interesting and they grow to tens of
+        // megabytes, so read a bounded window back from the end.
+        read_tail(path: string, length: long) -> string static is
+            try
+                let stream = File.open_read(path);
+
+                if stream.length > length then
+                    stream.seek(stream.length - length, IO.SeekOrigin.BEGIN);
+                fi
+
+                let reader = StreamReader(stream);
+
+                let text = reader.read_to_end();
+
+                reader.dispose();
+
+                return text;
+            catch ex: Exception
+                return "";
+            yrt
+        si
+
+        // Synchronous: these are small local files, and the concurrency worth
+        // having in a frame is the `gh` round-trip, not a tmpfs read.
+        read_text(path: string) -> string static is
+            try
+                return File.read_all_text(path);
+            catch ex: Exception
+                return "";
+            yrt
+        si
+
+        is_process_alive(pid: int) -> bool static =>
+            IO.Directory.exists("/proc/{pid}");
+
+        // Walks up /proc to the first ancestor in `candidates`, which is how a
+        // test run is attributed to the session that started it: the run's own
+        // pid is a grandchild of the session process.
+        find_ancestor(pid: int, candidates: Collections.SET[int]) -> int static is
+            let current mut = pid;
+
+            let hops mut = 0;
+
+            while current > 1 /\ hops < 32 do
+                if candidates.contains(current) then
+                    return current;
+                fi
+
+                let parent = get_parent_pid(current);
+
+                if parent <= 0 then
+                    return 0;
+                fi
+
+                current = parent;
+
+                hops = hops + 1;
+            od
+
+            return 0;
+        si
+
+        // Field 4 of /proc/<pid>/stat is the parent pid. The executable name in
+        // field 2 is parenthesised and can itself contain spaces, so the scan
+        // starts after the closing parenthesis rather than splitting the line.
+        get_parent_pid(pid: int) -> int static is
+            try
+                let text = File.read_all_text("/proc/{pid}/stat");
+
+                let close = text.last_index_of(')');
+
+                if close < 0 then
+                    return 0;
+                fi
+
+                let fields = text.substring(close + 1).trim().split([' ']);
+
+                if fields.count < 2 then
+                    return 0;
+                fi
+
+                return System.Convert.to_int32(fields[1]);
+            catch ex: Exception
+                return 0;
+            yrt
+        si
+
+        // Splits on any line ending and drops blank lines: every caller here is
+        // parsing line-oriented command output.
+        lines(text: string) -> Iterable[string] static is
+            let result = LIST[string]();
+
+            if string.is_null_or_empty(text) then
+                return result;
+            fi
+
+            for line in text.split(['\n']) do
+                let trimmed = line.trim_end(['\r']);
+
+                if !string.is_null_or_empty(trimmed) then
+                    result.add(trimmed);
+                fi
+            od
+
+            return result;
+        si
+    si
+si

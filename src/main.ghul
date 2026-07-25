@@ -1,0 +1,162 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use IO.Std;
+    use IO.Directory;
+    use IO.File;
+    use IO.Path;
+
+    class Main is
+        // Synchronous: an entry point has to return int or void, so the
+        // collectors' tasks are driven from here rather than awaited.
+        entry(arguments: string[]) -> int static is
+            let interval mut = 1000;
+            let once mut = false;
+
+            let i mut = 0;
+
+            while i < arguments.count do
+                let argument = arguments[i];
+
+                if argument =~ "--interval" then
+                    i = i + 1;
+
+                    if i >= arguments.count then
+                        Std.write_line("--interval requires a value in seconds");
+                        return 1;
+                    fi
+
+                    interval = cast int(double.parse(arguments[i]) * 1000.0D);
+                elif argument =~ "--once" then
+                    once = true;
+                elif argument =~ "--help" \/ argument =~ "-h" then
+                    write_usage();
+                    return 0;
+                else
+                    Std.write_line("unknown argument: {argument}");
+                    write_usage();
+                    return 1;
+                fi
+
+                i = i + 1;
+            od
+
+            let workspace = find_workspace();
+
+            if !workspace? then
+                Std.write_line("not inside a ghūl workspace (no directory above holding CLAUDE.md and worktrees/)");
+                return 1;
+            fi
+
+            let collector = COLLECTOR(workspace);
+
+            if once then
+                let renderer = RENDERER(100);
+
+                let snapshot = collector.collect().result;
+
+                collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
+
+                for line in renderer.render(snapshot) do
+                    Std.write_line(line);
+                od
+
+                return 0;
+            fi
+
+            let screen = SCREEN();
+
+            screen.enter();
+
+            try
+                do
+                    let snapshot = collector.collect().result;
+
+                    // Locations that need a transcript read are resolved after
+                    // the first paint, so a cold start shows something at once.
+                    collector.resolve_locations(snapshot.sessions, snapshot.worktrees);
+
+                    let renderer = RENDERER(screen.width);
+
+                    screen.paint(renderer.render(snapshot));
+
+                    if wait_for_quit(interval) then
+                        break;
+                    fi
+                od
+            catch ex: Exception
+                screen.leave();
+                Std.write_line("dashboard failed: {ex}");
+                return 1;
+            yrt
+
+            screen.leave();
+
+            return 0;
+        si
+
+        // Returns true when the user asked to quit. Polls rather than blocking
+        // on a key so the frame keeps refreshing on its own.
+        wait_for_quit(interval: int) -> bool static is
+            let poll = 50;
+
+            let waited mut = 0;
+
+            while waited < interval do
+                if Std.key_available then
+                    let key = Std.read_key(true);
+
+                    // Ctrl-C arrives as input while the alternate screen is up.
+                    if key.key_char == 'q' \/ key.key_char == cast char(3) \/ key.key == System.ConsoleKey.ESCAPE then
+                        return true;
+                    fi
+                fi
+
+                System.Threading.Thread.sleep(poll);
+
+                waited = waited + poll;
+            od
+
+            return false;
+        si
+
+        // The workspace is the directory holding the per-repo checkouts, found
+        // by walking up from the current directory.
+        find_workspace() -> string? static is
+            let override = System.Environment.get_environment_variable("GHUL_WORKSPACE");
+
+            if !string.is_null_or_white_space(override) /\ Directory.exists(override) then
+                return override;
+            fi
+
+            let current mut = System.Environment.current_directory;
+
+            let hops mut = 0;
+
+            while hops < 16 do
+                if File.exists(Path.join(current, "CLAUDE.md")) /\ Directory.exists(Path.join(current, "worktrees")) then
+                    return current;
+                fi
+
+                let parent = Directory.get_parent(current);
+
+                if !parent? then
+                    return null;
+                fi
+
+                current = parent.full_name;
+
+                hops = hops + 1;
+            od
+
+            return null;
+        si
+
+        write_usage() static is
+            Std.write_line("usage: ghul-dashboard [--interval <seconds>] [--once]");
+            Std.write_line("");
+            Std.write_line("  Live view of Claude Code sessions, test runs and open pull requests");
+            Std.write_line("  across the ghūl workspace. Press q to quit.");
+        si
+    si
+si

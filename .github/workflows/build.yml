@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Use the latest published compiler
+        run: dotnet tool update --local ghul.compiler
+
+      - name: Build
+        run: dotnet build ghul-dashboard.ghulproj
+
+      # Renders one frame and checks the panel headings are present. There is
+      # no workspace on the runner, so this exercises the argument handling and
+      # the not-a-workspace path rather than any collector.
+      - name: Smoke test
+        run: |
+          set -o pipefail
+          dotnet run --no-build -- --help | tee help.out
+          grep -q -- '--interval' help.out
+          if dotnet run --no-build -- --once > once.out 2>&1; then
+            grep -qi 'sessions' once.out
+          else
+            grep -qi 'not inside a ghūl workspace' once.out
+          fi

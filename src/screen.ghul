@@ -1,0 +1,127 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use Collections.Iterable;
+
+    use IO.Std;
+
+    // Terminal painting. Frames are repainted in place — cursor home, then each
+    // line cleared as it is rewritten — rather than clearing the screen first,
+    // which flickers.
+    class SCREEN is
+        escape: string static => "{cast char(27)}";
+
+        // Set once the alternate screen is in use, so a failure to restore is
+        // not attempted twice.
+        _entered: bool;
+
+        init() is si
+
+        width: int is
+            try
+                let width = Std.window_width;
+
+                if width > 0 then
+                    return width;
+                fi
+            catch ex: Exception
+                return 100;
+            yrt
+
+            return 100;
+        si
+
+        height: int is
+            try
+                let height = Std.window_height;
+
+                if height > 0 then
+                    return height;
+                fi
+            catch ex: Exception
+                return 40;
+            yrt
+
+            return 40;
+        si
+
+        enter() is
+            try
+                // Ctrl-C arrives as input rather than terminating the process,
+                // so the alternate screen is always restored on the way out.
+                Std.treat_control_c_as_input = true;
+            catch ex: Exception
+                // A terminal that will not take the setting still quits on `q`.
+                _entered = _entered;
+            yrt
+
+            Std.write("{escape}[?1049h{escape}[?25l");
+
+            _entered = true;
+        si
+
+        leave() is
+            if !_entered then
+                return;
+            fi
+
+            Std.write("{escape}[?25h{escape}[?1049l");
+
+            _entered = false;
+
+            try
+                Std.treat_control_c_as_input = false;
+            catch ex: Exception
+                return;
+            yrt
+        si
+
+        paint(lines: Iterable[string]) is
+            let text = System.Text.StringBuilder();
+
+            text.append("{escape}[H");
+
+            for line in lines do
+                text.append(line);
+                text.append("{escape}[K");
+                text.append("\n");
+            od
+
+            text.append("{escape}[J");
+
+            Std.write(text.to_string());
+        si
+
+        // Truncation is by visible characters, so it is applied to text before
+        // any colour sequences are wrapped around it.
+        clip(text: string?, width: int) -> string static is
+            if !text? then
+                return "";
+            fi
+
+            if text.length <= width then
+                return text;
+            fi
+
+            if width <= 1 then
+                return text.substring(0, width);
+            fi
+
+            return "{text.substring(0, width - 1)}~";
+        si
+
+        pad(text: string?, width: int) -> string static =>
+            clip(text, width).pad_right(width);
+
+        dim(text: string) -> string static => paint_text(text, "2");
+        red(text: string) -> string static => paint_text(text, "01;31");
+        green(text: string) -> string static => paint_text(text, "01;32");
+        yellow(text: string) -> string static => paint_text(text, "01;33");
+        blue(text: string) -> string static => paint_text(text, "01;34");
+        cyan(text: string) -> string static => paint_text(text, "01;36");
+        bold(text: string) -> string static => paint_text(text, "01");
+
+        paint_text(text: string, code: string) -> string static =>
+            "{escape}[{code}m{text}{escape}[00m";
+    si
+si

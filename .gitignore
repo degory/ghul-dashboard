@@ -1,0 +1,16 @@
+.*.rsp
+
+bin/
+obj/
+nupkg/
+publish/
+
+**/.assemblies.json
+**/*.il
+**/*.runtimeconfig.json
+
+*.exe
+*.dll
+*.pdb
+
+*~

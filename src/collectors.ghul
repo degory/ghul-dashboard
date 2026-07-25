@@ -1,0 +1,464 @@
+namespace Dashboard is
+    use System.Exception;
+
+    use Collections.Iterable;
+    use Collections.MutableList;
+    use Collections.LIST;
+    use Collections.SET;
+
+    use IO.File;
+    use IO.Directory;
+    use IO.Path;
+
+    use System.Text.Json.JsonSerializer;
+    use System.Text.Json.JsonSerializerOptions;
+    use System.Text.Json.JsonNamingPolicy;
+
+    // Claude Code writes its session records with camelCase keys, so the
+    // policy has to bridge ghūl's member naming rather than merely adjust the
+    // first letter, which is all the built-in camel-case policy does.
+    class SNAKE_TO_CAMEL_CASE: JsonNamingPolicy is
+        init() is si
+
+        convert_name(name: string) -> string is
+            let result = System.Text.StringBuilder();
+
+            let capitalize mut = false;
+
+            for c in name do
+                if c == '_' then
+                    capitalize = true;
+                elif capitalize then
+                    result.append(char.to_upper(c));
+                    capitalize = false;
+                else
+                    result.append(c);
+                fi
+            od
+
+            return result.to_string();
+        si
+    si
+
+    class COLLECTOR is
+        _workspace: string;
+        _runs_directory: string;
+        _sessions_directory: string;
+        _projects_directory: string;
+
+        _run_options: JsonSerializerOptions;
+        _session_options: JsonSerializerOptions;
+
+        // Repository scope for the pull-request query, discovered once: the set
+        // of checkouts under the workspace does not change during a session.
+        _repository_scope: Iterable[string]?;
+
+        // `gh` costs a network round-trip, so it refreshes on its own slower
+        // cadence and every frame in between redraws the last result.
+        _pull_requests: Iterable[PULL_REQUEST];
+        _pull_requests_fetched_at: long;
+
+        pull_request_interval_ms: long => 120_000L;
+
+        init(workspace: string) is
+            _workspace = workspace;
+
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+
+            _sessions_directory = Path.join(home, ".claude", "sessions");
+            _projects_directory = Path.join(home, ".claude", "projects");
+
+            let runtime_directory mut = System.Environment.get_environment_variable("XDG_RUNTIME_DIR");
+
+            // With no runtime directory there is nowhere for ghul-test to have
+            // published anything, so the empty path simply finds no runs.
+            if string.is_null_or_white_space(runtime_directory) then
+                _runs_directory = "";
+            else
+                _runs_directory = Path.join(runtime_directory, "ghul-test");
+            fi
+
+            _run_options = JsonSerializerOptions();
+
+            _session_options = JsonSerializerOptions();
+            _session_options.property_naming_policy = SNAKE_TO_CAMEL_CASE();
+
+            _pull_requests = LIST[PULL_REQUEST]();
+        si
+
+        // Starts every collector before awaiting any of them, so the local
+        // reads overlap the `gh` round-trip instead of following it.
+        collect() -> Tasks.TASK[SNAPSHOT] is
+            // The two collectors that spawn subprocesses are started first, so
+            // the local file reads happen while `git` and `gh` are in flight.
+            let worktrees_task = collect_worktrees();
+            let pull_requests_task = collect_pull_requests();
+
+            let runs = collect_runs();
+            let sessions = collect_sessions();
+
+            let worktrees = await worktrees_task;
+            let pull_requests = await pull_requests_task;
+
+            attribute_sessions(sessions, runs, worktrees);
+
+            let snapshot = SNAPSHOT(sessions, runs, worktrees, pull_requests);
+
+            snapshot.pull_requests_fetched_at = _pull_requests_fetched_at;
+
+            return snapshot;
+        si
+
+        collect_runs() -> Iterable[RUN] is
+            let result = LIST[RUN]();
+
+            if !Directory.exists(_runs_directory) then
+                return result;
+            fi
+
+            for path in Directory.get_files(_runs_directory, "*.json") do
+                let text = SHELL.read_text(path);
+
+                if string.is_null_or_white_space(text) then
+                    continue;
+                fi
+
+                try
+                    let run = JsonSerializer.deserialize[RUN](text, _run_options);
+
+                    if !run? \/ run.version != 1 then
+                        continue;
+                    fi
+
+                    // Abandoned by a killed run: no process, and it never
+                    // reported finishing. Nothing else collects these.
+                    if !SHELL.is_process_alive(run.pid) /\ !run.is_done then
+                        File.delete(path);
+                        delete_quietly("{Path.combine(_runs_directory, "{run.pid}")}.events");
+                        continue;
+                    fi
+
+                    result.add(run);
+                catch ex: Exception
+                    continue;
+                yrt
+            od
+
+            return result;
+        si
+
+        delete_quietly(path: string) static is
+            try
+                if File.exists(path) then
+                    File.delete(path);
+                fi
+            catch ex: Exception
+                return;
+            yrt
+        si
+
+        collect_sessions() -> MutableList[SESSION] is
+            let result = LIST[SESSION]();
+
+            if !Directory.exists(_sessions_directory) then
+                return result;
+            fi
+
+            for path in Directory.get_files(_sessions_directory, "*.json") do
+                let text = SHELL.read_text(path);
+
+                if string.is_null_or_white_space(text) then
+                    continue;
+                fi
+
+                try
+                    let session = JsonSerializer.deserialize[SESSION](text, _session_options);
+
+                    if !session? \/ !SHELL.is_process_alive(session.pid) then
+                        continue;
+                    fi
+
+                    result.add(session);
+                catch ex: Exception
+                    continue;
+                yrt
+            od
+
+            return result;
+        si
+
+        // A session's own cwd is where it was launched, which for this
+        // workspace is the umbrella directory rather than a worktree. An active
+        // run pins it exactly; otherwise the transcript's last recorded cwd is
+        // the best available answer.
+        attribute_sessions(
+            sessions: Iterable[SESSION],
+            runs: Iterable[RUN],
+            worktrees: Iterable[WORKTREE]
+        ) is
+            let pids = SET[int]();
+
+            for session in sessions do
+                pids.add(session.pid);
+            od
+
+            let owners = Collections.MAP[int,string]();
+
+            for run in runs do
+                let owner = SHELL.find_ancestor(run.pid, pids);
+
+                if owner > 0 then
+                    owners[owner] = run.cwd;
+                fi
+            od
+
+            for session in sessions do
+                if owners.contains_key(session.pid) then
+                    session.where = describe_location(owners[session.pid], worktrees);
+                fi
+            od
+        si
+
+        // Reads each unattributed session's transcript tail. Separate from
+        // `attribute_sessions` because it is the only part that touches the
+        // filesystem, and it only runs for sessions a live run did not pin.
+        resolve_locations(sessions: Iterable[SESSION], worktrees: Iterable[WORKTREE]) -> int is
+            let resolved mut = 0;
+
+            for session in sessions do
+                if session.where? then
+                    continue;
+                fi
+
+                let cwd = read_last_transcript_cwd(session);
+
+                if cwd? then
+                    session.where = describe_location(cwd, worktrees);
+                    resolved = resolved + 1;
+                fi
+            od
+
+            return resolved;
+        si
+
+        read_last_transcript_cwd(session: SESSION) -> string? is
+            if !session.cwd? \/ !session.session_id? then
+                return null;
+            fi
+
+            // Transcripts live in a directory named for the session's cwd with
+            // every path separator replaced by a dash.
+            let project = session.cwd.replace("/", "-");
+
+            let path = Path.join(_projects_directory, project, "{session.session_id}.jsonl");
+
+            if !File.exists(path) then
+                return null;
+            fi
+
+            let tail = SHELL.read_tail(path, 262144L);
+
+            let marker = "\"cwd\":\"";
+
+            let at = tail.last_index_of(marker);
+
+            if at < 0 then
+                return null;
+            fi
+
+            let from = at + marker.length;
+            let to = tail.index_of('"', from);
+
+            if to < 0 then
+                return null;
+            fi
+
+            return tail.substring(from, to - from);
+        si
+
+        describe_location(path: string, worktrees: Iterable[WORKTREE]) -> string is
+            for worktree in worktrees do
+                if path =~ worktree.path \/ path.starts_with("{worktree.path}/") then
+                    return worktree.label;
+                fi
+            od
+
+            if path.starts_with("{_workspace}/") then
+                return path.substring(_workspace.length + 1);
+            fi
+
+            if path =~ _workspace then
+                return ".";
+            fi
+
+            return path;
+        si
+
+        collect_worktrees() -> Tasks.TASK[Iterable[WORKTREE]] is
+            let result = LIST[WORKTREE]();
+
+            for repository in get_repository_directories() do
+                let name = Path.get_file_name(repository) ?? repository;
+
+                let output = await SHELL.run("git", ["-C", repository, "worktree", "list", "--porcelain"]);
+
+                let path mut = "";
+
+                for line in SHELL.lines(output) do
+                    if line.starts_with("worktree ") then
+                        path = line.substring(9);
+                    elif line.starts_with("branch refs/heads/") then
+                        result.add(WORKTREE(name, path, line.substring(18)));
+                    elif line.starts_with("detached") then
+                        result.add(WORKTREE(name, path, "(detached)"));
+                    fi
+                od
+            od
+
+            return result;
+        si
+
+        get_repository_directories() -> Iterable[string] is
+            let result = LIST[string]();
+
+            for directory in Directory.get_directories(_workspace) do
+                if Directory.exists(Path.join(directory, ".git")) \/ File.exists(Path.join(directory, ".git")) then
+                    result.add(directory);
+                fi
+            od
+
+            return result;
+        si
+
+        collect_pull_requests() -> Tasks.TASK[Iterable[PULL_REQUEST]] is
+            let age = now() - _pull_requests_fetched_at;
+
+            if _pull_requests_fetched_at > 0L /\ age < pull_request_interval_ms then
+                return _pull_requests;
+            fi
+
+            let scope = await get_repository_scope();
+
+            if scope| .count() == 0 then
+                return _pull_requests;
+            fi
+
+            // Every brace is doubled: a single brace opens a string
+            // interpolation, and GraphQL is nothing but braces.
+            let query = "query($q:String!){{search(query:$q,type:ISSUE,first:60){{nodes{{... on PullRequest{{number headRefName repository{{name}} reviewDecision commits(last:1){{nodes{{commit{{statusCheckRollup{{state}}}}}}}}}}}}}}}}";
+
+            let filter = ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv";
+
+            let terms = scope| .to_string(" ");
+
+            let output =
+                await SHELL.run(
+                    get_gh_path(),
+                    [
+                        "api", "graphql",
+                        "-f", "q=is:pr is:open {terms}",
+                        "-f", "query={query}",
+                        "--jq", filter
+                    ]
+                );
+
+            let result = LIST[PULL_REQUEST]();
+
+            for line in SHELL.lines(output) do
+                let fields = line.split(['\t']);
+
+                if fields.count < 5 then
+                    continue;
+                fi
+
+                if !fields[1].starts_with("claude/") then
+                    continue;
+                fi
+
+                try
+                    result.add(
+                        PULL_REQUEST(
+                            System.Convert.to_int32(fields[0]),
+                            fields[1],
+                            fields[2],
+                            fields[3],
+                            fields[4]
+                        )
+                    );
+                catch ex: Exception
+                    continue;
+                yrt
+            od
+
+            // An empty result from a failed `gh` would silently read as "no
+            // open pull requests", so keep the previous answer instead.
+            if result.count == 0 /\ string.is_null_or_white_space(output) then
+                return _pull_requests;
+            fi
+
+            _pull_requests = result;
+            _pull_requests_fetched_at = now();
+
+            return result;
+        si
+
+        // The workspace's `gh` wrapper supplies the bot credentials, and it is
+        // only on PATH for interactive shells, so prefer it explicitly.
+        get_gh_path() -> string static is
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+
+            let wrapper = Path.join(home, ".local", "bin", "gh");
+
+            if File.exists(wrapper) then
+                return wrapper;
+            fi
+
+            return "gh";
+        si
+
+        get_repository_scope() -> Tasks.TASK[Iterable[string]] is
+            if _repository_scope? then
+                return _repository_scope;
+            fi
+
+            let result = LIST[string]();
+
+            for repository in get_repository_directories() do
+                let output = await SHELL.run("git", ["-C", repository, "remote", "get-url", "origin"]);
+
+                for line in SHELL.lines(output) do
+                    let slug = get_repository_slug(line);
+
+                    if slug? then
+                        result.add("repo:{slug}");
+                    fi
+                od
+            od
+
+            _repository_scope = result;
+
+            return result;
+        si
+
+        // Reduces either remote form — git@host:owner/name.git or
+        // https://host/owner/name — to owner/name.
+        get_repository_slug(url: string) -> string? static is
+            let trimmed mut = url.trim();
+
+            if trimmed.ends_with(".git") then
+                trimmed = trimmed.substring(0, trimmed.length - 4);
+            fi
+
+            let parts = trimmed.split(['/', ':']);
+
+            if parts.count < 2 then
+                return null;
+            fi
+
+            return "{parts[parts.count - 2]}/{parts[parts.count - 1]}";
+        si
+
+        now() -> long static =>
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+    si
+si
