@@ -6,12 +6,20 @@ namespace Dashboard is
     use System.Diagnostics.Process;
     use System.Diagnostics.ProcessStartInfo;
 
-    // Runs a command and captures its output. Asynchronous because `gh` costs a
-    // network round-trip, and a frame has better things to do than wait for it.
+    // Runs a command and captures its output.
+    //
+    // Synchronous, and deliberately so: a faulting `git` or `gh` has to be
+    // contained here, and a try/catch cannot yet surround an await, so an
+    // asynchronous version could not catch the failure at all — it would fault
+    // its task and surface as an AggregateException wherever the result was
+    // read. The sources cache instead of overlapping, which costs a frame far
+    // less than a crash.
     class PROCESS_RUNNER is
-        // Captures stdout and ignores the exit status: every caller treats a
+        timeout_ms: int static => 10000;
+
+        // Captures stdout, ignoring the exit status: every caller treats a
         // failed command as "no data", which empty output already expresses.
-        run(path: string, arguments: Iterable[string]) -> Tasks.TASK[string] static is
+        run(path: string, arguments: Iterable[string]) -> string static is
             try
                 let start_info = ProcessStartInfo();
 
@@ -33,11 +41,11 @@ namespace Dashboard is
                     return "";
                 fi
 
-                let output = await process.standard_output.read_to_end_async();
+                let output = process.standard_output.read_to_end();
 
                 // Reading stdout to end means the child has already closed it,
                 // so this reaps an all-but-exited process.
-                process.wait_for_exit(5000);
+                process.wait_for_exit(timeout_ms);
 
                 return output;
             catch ex: Exception

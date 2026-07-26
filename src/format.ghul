@@ -84,9 +84,23 @@ namespace Dashboard is
 
     // The one bar builder. Both the load meters and the test-run progress bars
     // come through here, which is the only way they stay the same shape.
+    //
+    // A bar is drawn in eighth-width blocks, so a column carries eight values
+    // rather than two and a short bar still shows movement: at twelve columns a
+    // plain full-or-empty bar changes only every eight percent.
     class METER is
-        filled_character: char static => '#';
-        empty_character: char static => '.';
+        steps_per_column: int static => 8;
+
+        // U+2588 down to U+258F: full block, then seven-eighths through
+        // one-eighth. Index by eighths, so partial_blocks[1] is one eighth.
+        partial_blocks: string static => " ▏▎▍▌▋▊▉";
+
+        filled_character: char static => '█';
+        empty_character: char static => '·';
+
+        // U+2581 to U+2588: one-eighth height through full, for a column that
+        // stands in for one core.
+        column_blocks: string static => "▁▂▃▄▅▆▇█";
 
         // Bands the meters are coloured by, and that the per-core cells stand
         // in for.
@@ -95,15 +109,42 @@ namespace Dashboard is
         active_percent: double static => 20.0D;
 
         bar(percent: double, width: int) -> string static is
-            let filled mut = cast int(percent * cast double(width) / 100.0D);
+            let steps = get_steps(percent, width);
 
-            if filled < 0 then
-                filled = 0;
-            elif filled > width then
-                filled = width;
+            let full = steps / steps_per_column;
+            let remainder = steps % steps_per_column;
+
+            let result = System.Text.StringBuilder();
+
+            result.append("".pad_right(full, filled_character));
+
+            // The partial column only exists when the bar does not land on a
+            // column boundary, and it takes one of the columns still to fill.
+            if remainder > 0 /\ full < width then
+                result.append(partial_blocks.substring(remainder, 1));
+                result.append("".pad_right(width - full - 1, empty_character));
+            else
+                result.append("".pad_right(width - full, empty_character));
             fi
 
-            return "{"".pad_right(filled, filled_character)}{"".pad_right(width - filled, empty_character)}";
+            return result.to_string();
+        si
+
+        // Total eighths to fill, clamped to the bar.
+        get_steps(percent: double, width: int) -> int static is
+            let steps mut = cast int(percent * cast double(width * steps_per_column) / 100.0D);
+
+            if steps < 0 then
+                return 0;
+            fi
+
+            let maximum = width * steps_per_column;
+
+            if steps > maximum then
+                return maximum;
+            fi
+
+            return steps;
         si
 
         painted_bar(percent: double, width: int) -> string static =>
@@ -119,18 +160,22 @@ namespace Dashboard is
             return SCREEN.green(text);
         si
 
-        // One cell standing in for a core, shaded by band, so a row of them
-        // reads as a profile rather than a number.
-        core_cell(percent: double) -> string static is
-            if percent >= busy_percent then
-                return SCREEN.red("#");
-            elif percent >= working_percent then
-                return SCREEN.yellow("+");
-            elif percent >= active_percent then
-                return SCREEN.green("-");
+        // One column standing in for a core: its height carries the load and
+        // its colour the band, so a row of them reads as a profile rather than
+        // as a number.
+        core_cell(percent: double) -> string static =>
+            paint(core_glyph(percent), percent);
+
+        core_glyph(percent: double) -> string static is
+            let level mut = cast int(percent * cast double(column_blocks.length) / 100.0D);
+
+            if level < 0 then
+                level = 0;
+            elif level >= column_blocks.length then
+                level = column_blocks.length - 1;
             fi
 
-            return SCREEN.dim(".");
+            return column_blocks.substring(level, 1);
         si
     si
 si

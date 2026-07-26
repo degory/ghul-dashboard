@@ -60,7 +60,7 @@ namespace Dashboard is
                 view.width = sizing.width;
                 view.height = sizing.height;
 
-                let snapshot = collector.collect().result;
+                let snapshot = collector.collect();
 
                 collector.resolve_locations(snapshot);
 
@@ -75,45 +75,66 @@ namespace Dashboard is
 
             screen.enter();
 
-            try
-                do
-                    let snapshot = collector.collect().result;
+            do
+                // A frame is allowed to fail. One bad read of somebody else's
+                // state file is not a reason to take the window away, so the
+                // failure is reported in the footer and the next frame tries
+                // again.
+                let snapshot = collect_quietly(collector, view);
 
-                    // Locations that need a transcript read are resolved after
-                    // the first paint, so a cold start shows something at once.
-                    collector.resolve_locations(snapshot);
-
-                    let sessions = snapshot.sessions | .collect_list();
-
-                    // A resize leaves the parts of the screen the new layout
-                    // does not reach holding the old frame, so it is cleared
-                    // before repainting at the new size.
-                    if screen.width != view.width \/ screen.height != view.height then
-                        view.width = screen.width;
-                        view.height = screen.height;
-
-                        screen.clear();
-                    fi
-
-                    if view.selected_pid == 0 /\ sessions.count > 0 then
-                        view.selected_pid = sessions[0].pid;
-                    fi
-
-                    screen.paint(RENDERER(view, now()).render(snapshot));
-
-                    if handle_keys(screen, view, sessions, interval) then
+                if !snapshot? then
+                    if handle_keys(screen, view, Collections.LIST[SESSION](), interval) then
                         break;
                     fi
-                od
-            catch ex: Exception
-                screen.leave();
-                Std.write_line("dashboard failed: {ex}");
-                return 1;
-            yrt
+
+                    continue;
+                fi
+
+                let sessions = snapshot.sessions | .collect_list();
+
+                // A resize leaves the parts of the screen the new layout does
+                // not reach holding the old frame, so it is cleared before
+                // repainting at the new size.
+                if screen.width != view.width \/ screen.height != view.height then
+                    view.width = screen.width;
+                    view.height = screen.height;
+
+                    screen.clear();
+                fi
+
+                if view.selected_pid == 0 /\ sessions.count > 0 then
+                    view.selected_pid = sessions[0].pid;
+                fi
+
+                screen.paint(RENDERER(view, now()).render(snapshot));
+
+                if handle_keys(screen, view, sessions, interval) then
+                    break;
+                fi
+            od
 
             screen.leave();
 
             return 0;
+        si
+
+        // A collector failure is shown rather than fatal: these are other
+        // programs' state files, read while they are being written, and the next
+        // frame usually reads them cleanly.
+        collect_quietly(collector: COLLECTOR, view: VIEW) -> SNAPSHOT? static is
+            try
+                let snapshot = collector.collect();
+
+                collector.resolve_locations(snapshot);
+
+                view.message = null;
+
+                return snapshot;
+            catch ex: Exception
+                view.message = "collector failed: {ex.message}";
+
+                return null;
+            yrt
         si
 
         // Polls for keystrokes until the refresh period expires, so the frame
@@ -204,7 +225,7 @@ namespace Dashboard is
 
             view.clear_pending_kill();
 
-            let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"]).result;
+            let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"]);
 
             if string.is_null_or_white_space(output) then
                 view.message = "sent SIGTERM to {pid}";

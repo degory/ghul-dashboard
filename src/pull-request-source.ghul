@@ -30,18 +30,18 @@ namespace Dashboard is
             _pull_requests = LIST[PULL_REQUEST]();
         si
 
-        collect(now: long) -> Tasks.TASK[Iterable[PULL_REQUEST]] is
+        collect(now: long) -> Iterable[PULL_REQUEST] is
             if _fetched_at > 0L /\ now - _fetched_at < refresh_interval_ms then
                 return _pull_requests;
             fi
 
-            let scope = await get_scope();
+            let scope = get_scope();
 
             if scope| .count() == 0 then
                 return _pull_requests;
             fi
 
-            let output = await search(scope);
+            let output = search(scope);
 
             if string.is_null_or_white_space(output) then
                 return _pull_requests;
@@ -63,11 +63,11 @@ namespace Dashboard is
         filter: string static =>
             ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv";
 
-        search(scope: Iterable[string]) -> Tasks.TASK[string] is
+        search(scope: Iterable[string]) -> string is
             let terms = scope| .to_string(" ");
 
             return
-                await PROCESS_RUNNER.run(
+                PROCESS_RUNNER.run(
                     get_gh_path(),
                     ["api", "graphql", "-f", "q=is:pr is:open {terms}", "-f", "query={query}", "--jq", filter]
                 );
@@ -87,7 +87,7 @@ namespace Dashboard is
             return "gh";
         si
 
-        get_scope() -> Tasks.TASK[Iterable[string]] is
+        get_scope() -> Iterable[string] is
             if _scope? then
                 return _scope;
             fi
@@ -95,7 +95,7 @@ namespace Dashboard is
             let result = LIST[string]();
 
             for repository in _workspace.list_repositories() do
-                let output = await PROCESS_RUNNER.run("git", ["-C", repository, "remote", "get-url", "origin"]);
+                let output = PROCESS_RUNNER.run("git", ["-C", repository, "remote", "get-url", "origin"]);
 
                 for line in TEXT.lines(output) do
                     let slug = get_repository_slug(line);

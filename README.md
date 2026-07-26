@@ -106,6 +106,18 @@ is the same parser split these tests already exercise.
 | processor, memory | `/proc/stat`, `/proc/meminfo`, `/proc/loadavg` |
 | busiest processes | `utime + stime` deltas from `/proc/<pid>/stat` |
 
+Meters are drawn in eighth-width block characters, so a column carries eight
+values rather than two: a twelve-column bar would otherwise only move every
+eight percent. The per-core row uses the vertical blocks, so each core's column
+carries its load in its height as well as its colour.
+
+Nothing is asynchronous. A try/catch cannot yet surround an await in ghūl, so an
+asynchronous `git` or `gh` call could not contain its own failure — it would
+fault its task and resurface as an `AggregateException` wherever the result was
+read, which is what used to make the dashboard exit at random. The sources that
+spawn processes cache their answers instead of overlapping the local reads, and a
+frame that fails is reported in the footer rather than being fatal.
+
 A session's own `cwd` is where it was launched, which for this workspace is the
 umbrella directory rather than a worktree, so the worktree column is derived two
 ways. A session with a test run in flight is attributed exactly, by walking
@@ -124,6 +136,8 @@ process is gone and which never reached `done` was abandoned by a killed run.
 
 ## Known limitations
 
+- The block characters need a font with the Unicode block elements, which every
+  current terminal font has.
 - A `SIGTERM` or `SIGKILL` leaves the terminal on the alternate screen with the
   cursor hidden, since neither is handled. `reset` restores it. `q`, Escape and
   Ctrl-C all exit cleanly.
