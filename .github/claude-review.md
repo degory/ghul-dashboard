@@ -22,9 +22,12 @@ in.
 
 ## What to watch for here
 
-- **Writes or side effects.** The dashboard observes; it should not mutate git
-  state, touch worktrees, or write anywhere but its own config. Flag any new write
-  path on sight.
+- **Writes outside its own lane.** The dashboard reports on work other sessions are
+  doing, so it must not mutate git state or touch a worktree's contents. It does
+  legitimately write: `src/run-source.ghul` reaps the state files of `ghul-test`
+  runs whose process is gone and that never reported finishing, because nothing
+  else collects them. Judge a new write by whether anything else could be relying
+  on what it removes, not by whether it writes at all.
 - **Blocking the render loop.** It redraws on a timer, so a synchronous network or
   subprocess call on the render path stalls the whole UI. Those belong off the
   critical path with a stale-value fallback.
