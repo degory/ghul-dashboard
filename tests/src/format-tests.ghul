@@ -76,10 +76,10 @@ namespace Tests is
         meter__bar__fills_in_proportion_to_the_percentage() is
             @test()
 
-            are_equal("#####.....", METER.bar(50.0D, 10));
-            are_equal("###.......", METER.bar(30.0D, 10));
-            are_equal("##########", METER.bar(100.0D, 10));
-            are_equal("..........", METER.bar(0.0D, 10));
+            are_equal("█████·····", METER.bar(50.0D, 10));
+            are_equal("███·······", METER.bar(30.0D, 10));
+            are_equal("██████████", METER.bar(100.0D, 10));
+            are_equal("··········", METER.bar(0.0D, 10));
         si
 
         meter__bar__is_always_the_width_asked_for() is
@@ -92,13 +92,50 @@ namespace Tests is
             od
         si
 
+        // Eight steps per column is the point of the block characters: a bar
+        // twelve columns wide would otherwise only move every eight percent.
+        meter__bar__fills_a_partial_column_in_eighths() is
+            @test()
+
+            // Half of one column of eight.
+            are_equal("▌·······", METER.bar(6.25D, 8));
+
+            // One eighth, and seven eighths, of one column.
+            are_equal("▏·······", METER.bar(1.6D, 8));
+            are_equal("▉·······", METER.bar(11.0D, 8));
+        si
+
+        meter__bar__uses_a_whole_column_on_a_boundary() is
+            @test()
+
+            are_equal("█·······", METER.bar(12.5D, 8));
+            are_equal("██······", METER.bar(25.0D, 8));
+        si
+
+        // The glyph carries the height; the colour is applied separately, so
+        // this is the part worth pinning.
+        meter__core_glyph__rises_with_the_load() is
+            @test()
+
+            are_equal("▁", METER.core_glyph(0.0D));
+            are_equal("▅", METER.core_glyph(50.0D));
+            are_equal("█", METER.core_glyph(100.0D));
+        si
+
+        meter__core_glyph__clamps_a_percentage_outside_the_range() is
+            @test()
+
+            are_equal("█", METER.core_glyph(150.0D));
+            are_equal("▁", METER.core_glyph(-5.0D));
+        si
+
         // A percentage outside the range would otherwise produce a bar longer or
         // shorter than its column.
         meter__bar__clamps_a_percentage_outside_the_range() is
             @test()
 
-            are_equal("##########", METER.bar(150.0D, 10));
-            are_equal("..........", METER.bar(-10.0D, 10));
+            are_equal("██████████", METER.bar(150.0D, 10));
+            are_equal("··········", METER.bar(-10.0D, 10));
         si
     si
 si
