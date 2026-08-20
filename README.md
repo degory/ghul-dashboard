@@ -71,7 +71,7 @@ arithmetic is wrong.
 dotnet test tests
 ```
 
-73 tests over the parsers, the layout arithmetic, the formatters and the
+77 tests over the parsers, the layout arithmetic, the formatters and the
 selection behaviour — every part that is a function of its input rather than of
 the machine. The awkward cases are the point: a `/proc/<pid>/stat` command
 containing spaces and parentheses, counters that go backwards when a core is
@@ -79,16 +79,10 @@ hotplugged, a selection whose session has exited, a row at every width from 40
 columns up.
 
 Assertions are global functions in `tests/src/assertions.ghul`, so the tests read
-as statements and no test file names MSTest directly.
-
-MSTest is pinned to the 3.x line. Two things stand in the way of 4.x, and only
-the first is about ghūl: every 4.x overload gained trailing optional parameters
-holding the caller-expression text it prints on failure, and ghūl cannot omit an
-optional parameter, so no call with fewer than five arguments resolves — for any
-argument type. Wrapping each assertion once, as above, handles that. The
-remaining obstacle is that 4.x expects the Microsoft.Testing.Platform runner,
-which generates the executable's entry point, and a ghūl executable declares its
-own.
+as statements and no test file names MSTest directly. The indirection earns its
+place on a version bump: MSTest 4 gave every assertion overload trailing
+optional parameters holding the caller-expression text it prints on failure,
+and ghūl cannot omit an optional parameter, so the wrappers supply empty ones.
 
 There are no integration tests. Covering the rest would mean faking `/proc`, a
 `~/.claude` directory and `git`/`gh`, and the seam that would make that possible
