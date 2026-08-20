@@ -3,10 +3,11 @@ namespace Tests is
     use Collections.LIST;
 
     use Dashboard;
+    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute;
+    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute;
 
+    @TestClass()
     class VIEW_TESTS is
-        @test()
-
         init() is si
 
         session(pid: int, updated_at: long) -> SESSION static is
@@ -30,9 +31,8 @@ namespace Tests is
             return result;
         si
 
+        @Test()
         view__move__steps_down_the_list() is
-            @test()
-
             let sessions = three_sessions();
 
             let view = VIEW();
@@ -44,9 +44,8 @@ namespace Tests is
             are_equal(200, view.selected_pid);
         si
 
+        @Test()
         view__move__clamps_at_both_ends() is
-            @test()
-
             let sessions = three_sessions();
 
             let view = VIEW();
@@ -66,9 +65,8 @@ namespace Tests is
 
         // Rows reorder as sessions become active. Tracking a pid rather than a
         // row index is what stops the selection landing on a different session.
+        @Test()
         view__get_selected__follows_a_session_through_a_reorder() is
-            @test()
-
             let sessions = three_sessions();
 
             let view = VIEW();
@@ -86,9 +84,8 @@ namespace Tests is
         si
 
         // The selected session exited between frames.
+        @Test()
         view__move__given_a_selection_that_has_vanished__lands_on_the_first_row() is
-            @test()
-
             let sessions = three_sessions();
 
             let view = VIEW();
@@ -100,9 +97,8 @@ namespace Tests is
             are_equal(100, view.selected_pid);
         si
 
+        @Test()
         view__get_selected_index__given_a_selection_that_has_vanished__is_negative() is
-            @test()
-
             let view = VIEW();
 
             view.selected_pid = 999;
@@ -110,9 +106,8 @@ namespace Tests is
             are_equal(-1, view.get_selected_index(three_sessions()));
         si
 
+        @Test()
         view__move__given_no_sessions__clears_the_selection() is
-            @test()
-
             let view = VIEW();
 
             view.selected_pid = 100;
@@ -122,9 +117,8 @@ namespace Tests is
             are_equal(0, view.selected_pid);
         si
 
+        @Test()
         view__clear_pending_kill__forgets_an_armed_confirmation() is
-            @test()
-
             let view = VIEW();
 
             view.pending_kill_pid = 100;
@@ -135,9 +129,8 @@ namespace Tests is
         si
     si
 
+    @TestClass()
     class MOST_RECENTLY_ACTIVE_TESTS is
-        @test()
-
         init() is si
 
         session(pid: int, updated_at: long) -> SESSION static is
@@ -149,9 +142,8 @@ namespace Tests is
             return result;
         si
 
+        @Test()
         most_recently_active__compare__orders_the_more_recent_session_first() is
-            @test()
-
             let order = MOST_RECENTLY_ACTIVE();
 
             is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0);
@@ -160,18 +152,16 @@ namespace Tests is
 
         // A total order keeps equally-recent rows from swapping between frames
         // and moving under the selection.
+        @Test()
         most_recently_active__compare__breaks_ties_by_pid() is
-            @test()
-
             let order = MOST_RECENTLY_ACTIVE();
 
             is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0);
             are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
         si
 
+        @Test()
         most_recently_active__sort__puts_the_most_recently_active_at_the_top() is
-            @test()
-
             let sessions = LIST[SESSION]();
 
             sessions.add(session(1, 1000L));

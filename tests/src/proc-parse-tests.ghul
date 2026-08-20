@@ -1,48 +1,44 @@
 namespace Tests is
     use Dashboard;
+    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute;
+    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute;
 
+    @TestClass()
     class PROCESSOR_TIMES_TESTS is
-        @test()
-
         init() is si
 
         // The aggregate line, with the columns a real /proc/stat carries.
         stat_line: string static => "cpu  100 20 30 700 50 0 0 0 0 0";
 
+        @Test()
         processor_times__parse__sums_every_column_into_total() is
-            @test()
-
             let times = PROCESSOR_TIMES.parse(stat_line)!;
 
             is_not_null(times);
             are_equal(900L, times.total);
         si
 
+        @Test()
         processor_times__parse__excludes_idle_and_iowait_from_busy() is
-            @test()
-
             let times = PROCESSOR_TIMES.parse(stat_line)!;
 
             // 900 total less 700 idle and 50 iowait.
             are_equal(150L, times.busy);
         si
 
+        @Test()
         processor_times__parse__given_a_non_cpu_line__returns_null() is
-            @test()
-
             is_null(PROCESSOR_TIMES.parse("intr 12345 0 0"));
         si
 
+        @Test()
         processor_times__parse__given_empty_input__returns_null() is
-            @test()
-
             is_null(PROCESSOR_TIMES.parse(""));
             is_null(PROCESSOR_TIMES.parse(null));
         si
 
+        @Test()
         processor_times__parse__tolerates_runs_of_spaces_between_columns() is
-            @test()
-
             let times = PROCESSOR_TIMES.parse("cpu0     1    2     3     4")!;
 
             are_equal(10L, times.total);
@@ -51,9 +47,8 @@ namespace Tests is
             are_equal(6L, times.busy);
         si
 
+        @Test()
         processor_times__percent_since__reports_the_share_of_the_interval_spent_busy() is
-            @test()
-
             let previous = PROCESSOR_TIMES(100L, 200L);
             let current = PROCESSOR_TIMES(150L, 300L);
 
@@ -61,15 +56,13 @@ namespace Tests is
             are_close(50.0D, PROCESSOR_TIMES(150L, 300L).percent_since(previous), 0.001D);
         si
 
+        @Test()
         processor_times__percent_since__given_no_previous_sample__is_zero() is
-            @test()
-
             are_close(0.0D, PROCESSOR_TIMES(150L, 300L).percent_since(null), 0.001D);
         si
 
+        @Test()
         processor_times__percent_since__given_no_elapsed_time__is_zero() is
-            @test()
-
             let same = PROCESSOR_TIMES(150L, 300L);
 
             are_close(0.0D, same.percent_since(same), 0.001D);
@@ -77,25 +70,22 @@ namespace Tests is
 
         // A core going offline and back can leave the counters lower than they
         // were, which must not read as negative utilisation.
+        @Test()
         processor_times__percent_since__given_counters_that_went_backwards__is_zero() is
-            @test()
-
             let previous = PROCESSOR_TIMES(500L, 900L);
 
             are_close(0.0D, PROCESSOR_TIMES(100L, 200L).percent_since(previous), 0.001D);
         si
 
+        @Test()
         processor_times__percent_since__is_capped_at_one_hundred() is
-            @test()
-
             let previous = PROCESSOR_TIMES(0L, 0L);
 
             are_close(100.0D, PROCESSOR_TIMES(500L, 100L).percent_since(previous), 0.001D);
         si
 
+        @Test()
         processor_times__parse_all__returns_the_aggregate_first_then_each_core() is
-            @test()
-
             let all =
                 PROCESSOR_TIMES.parse_all(
                     "cpu  10 0 0 90 0\ncpu0 5 0 0 45 0\ncpu1 5 0 0 45 0\nintr 999\nctxt 12345"
@@ -107,17 +97,15 @@ namespace Tests is
         si
     si
 
+    @TestClass()
     class MEMORY_INFO_TESTS is
-        @test()
-
         init() is si
 
         meminfo: string static =>
             "MemTotal:       16364728 kB\nMemFree:         1000000 kB\nMemAvailable:    9748080 kB\nSwapTotal:       2000000 kB\nSwapFree:        1500000 kB";
 
+        @Test()
         memory_info__parse__reads_the_four_figures_it_needs() is
-            @test()
-
             let memory = MEMORY_INFO.parse(meminfo);
 
             are_equal(16364728L, memory.total_kb);
@@ -126,18 +114,16 @@ namespace Tests is
             are_equal(1500000L, memory.swap_free_kb);
         si
 
+        @Test()
         memory_info__used_kb__is_total_less_available() is
-            @test()
-
             let memory = MEMORY_INFO.parse(meminfo);
 
             are_equal(6616648L, memory.used_kb);
             are_equal(500000L, memory.swap_used_kb);
         si
 
+        @Test()
         memory_info__parse__given_empty_input__reads_zero() is
-            @test()
-
             let memory = MEMORY_INFO.parse("");
 
             are_equal(0L, memory.total_kb);
@@ -145,45 +131,39 @@ namespace Tests is
         si
     si
 
+    @TestClass()
     class LOAD_AVERAGE_TESTS is
-        @test()
-
         init() is si
 
+        @Test()
         load_average__parse__reads_the_one_minute_figure() is
-            @test()
-
             are_close(0.76D, LOAD_AVERAGE.parse("0.76 0.49 1.39 2/788 395137"), 0.001D);
         si
 
+        @Test()
         load_average__parse__given_empty_input__is_zero() is
-            @test()
-
             are_close(0.0D, LOAD_AVERAGE.parse(""), 0.001D);
         si
     si
 
+    @TestClass()
     class PROCESS_STAT_TESTS is
-        @test()
-
         init() is si
 
         // Columns after the command: state, ppid, pgrp, session, tty, tpgid,
         // flags, minflt, cminflt, majflt, cmajflt, utime, stime.
         columns_after_command: string static => "S 4321 1 1 0 -1 0 0 0 0 0 250 130";
 
+        @Test()
         process_stat__parse__reads_the_parent_pid() is
-            @test()
-
             let stat = PROCESS_STAT.parse("1234 (dotnet) {columns_after_command}")!;
 
             is_not_null(stat);
             are_equal(4321, stat.parent_pid);
         si
 
+        @Test()
         process_stat__parse__sums_user_and_system_time() is
-            @test()
-
             let stat = PROCESS_STAT.parse("1234 (dotnet) {columns_after_command}")!;
 
             are_equal(380L, stat.processor_ticks);
@@ -191,9 +171,8 @@ namespace Tests is
 
         // The classic trap: splitting the whole line on spaces misreads every
         // column after a command containing one.
+        @Test()
         process_stat__parse__given_a_command_containing_spaces__reads_the_columns_after_it() is
-            @test()
-
             let stat = PROCESS_STAT.parse("1234 (Web Content) {columns_after_command}")!;
 
             are_equal("Web Content", stat.command);
@@ -202,24 +181,21 @@ namespace Tests is
         si
 
         // Scanning to the *last* parenthesis is what makes this work.
+        @Test()
         process_stat__parse__given_a_command_containing_parentheses__reads_the_columns_after_it() is
-            @test()
-
             let stat = PROCESS_STAT.parse("1234 (weird (name) here) {columns_after_command}")!;
 
             are_equal("weird (name) here", stat.command);
             are_equal(4321, stat.parent_pid);
         si
 
+        @Test()
         process_stat__parse__given_a_truncated_line__returns_null() is
-            @test()
-
             is_null(PROCESS_STAT.parse("1234 (dotnet) S 4321"));
         si
 
+        @Test()
         process_stat__parse__given_input_without_a_command__returns_null() is
-            @test()
-
             is_null(PROCESS_STAT.parse("1234 dotnet S 4321 1 1 0 -1 0 0 0 0 0 250 130"));
             is_null(PROCESS_STAT.parse(""));
         si
