@@ -140,6 +140,6 @@ process is gone and which never reached `done` was abandoned by a killed run.
 - Below about 60 columns the pull-request rows start dropping columns — the
   repository first, then the CI state — to keep the branch name readable.
 
-## issues
+## Issues
 
 [View open issues](https://github.com/degory/ghul/issues?q=is%3Aopen+is%3Aissue+label%3Aghul-dashboard) or [raise a new one](https://github.com/degory/ghul/issues/new?labels=ghul-dashboard).
