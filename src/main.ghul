@@ -1,28 +1,28 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use IO.Std;
-    use IO.Directory;
-    use IO.File;
-    use IO.Path;
+    use IO.Std
+    use IO.Directory
+    use IO.File
+    use IO.Path
 
     class Main is
         // Synchronous: an entry point has to return int or void, so the
         // collectors' tasks are driven from here rather than awaited.
         entry(arguments: string[]) -> int static is
-            let interval mut = 1000;
-            let once mut = false;
+            let interval mut = 1000
+            let once mut = false
 
-            let i mut = 0;
+            let i mut = 0
 
             while i < arguments.count do
-                let argument = arguments[i];
+                let argument = arguments[i]
 
                 if argument =~ "--interval" then
-                    i = i + 1;
+                    i = i + 1
 
                     if i >= arguments.count then
-                        Std.write_line("--interval requires a value in seconds");
+                        Std.write_line("--interval requires a value in seconds")
                         return 1;
                     fi
 
@@ -30,39 +30,39 @@ namespace Dashboard is
                 elif argument =~ "--once" then
                     once = true;
                 elif argument =~ "--help" \/ argument =~ "-h" then
-                    write_usage();
+                    write_usage()
                     return 0;
                 else
-                    Std.write_line("unknown argument: {argument}");
-                    write_usage();
+                    Std.write_line("unknown argument: {argument}")
+                    write_usage()
                     return 1;
                 fi
 
                 i = i + 1;
             od
 
-            let workspace = find_workspace();
+            let workspace = find_workspace()
 
             if !workspace? then
-                Std.write_line("not inside a ghūl workspace (no directory above holding CLAUDE.md and worktrees/)");
+                Std.write_line("not inside a ghūl workspace (no directory above holding CLAUDE.md and worktrees/)")
                 return 1;
             fi
 
-            let collector = COLLECTOR(workspace);
+            let collector = COLLECTOR(workspace)
 
-            let view = VIEW();
+            let view = VIEW()
 
             if once then
                 // Fitted to the terminal here too, so a piped frame matches
                 // what the live view would have drawn.
-                let sizing = SCREEN();
+                let sizing = SCREEN()
 
-                view.width = sizing.width;
-                view.height = sizing.height;
+                view.width = sizing.width
+                view.height = sizing.height
 
-                let snapshot = collector.collect();
+                let snapshot = collector.collect()
 
-                collector.resolve_locations(snapshot);
+                collector.resolve_locations(snapshot)
 
                 for line in RENDERER(view, now()).render(snapshot) do
                     Std.write_line(line);
@@ -71,16 +71,16 @@ namespace Dashboard is
                 return 0;
             fi
 
-            let screen = SCREEN();
+            let screen = SCREEN()
 
-            screen.enter();
+            screen.enter()
 
             do
                 // A frame is allowed to fail. One bad read of somebody else's
                 // state file is not a reason to take the window away, so the
                 // failure is reported in the footer and the next frame tries
                 // again.
-                let snapshot = collect_quietly(collector, view);
+                let snapshot = collect_quietly(collector, view)
 
                 if !snapshot? then
                     if handle_keys(screen, view, Collections.LIST[SESSION](), interval) then
@@ -90,14 +90,14 @@ namespace Dashboard is
                     continue;
                 fi
 
-                let sessions = snapshot.sessions | .collect_list();
+                let sessions = snapshot.sessions | .collect_list()
 
                 // A resize leaves the parts of the screen the new layout does
                 // not reach holding the old frame, so it is cleared before
                 // repainting at the new size.
                 if screen.width != view.width \/ screen.height != view.height then
-                    view.width = screen.width;
-                    view.height = screen.height;
+                    view.width = screen.width
+                    view.height = screen.height
 
                     screen.clear();
                 fi
@@ -106,14 +106,14 @@ namespace Dashboard is
                     view.selected_pid = sessions[0].pid;
                 fi
 
-                screen.paint(RENDERER(view, now()).render(snapshot));
+                screen.paint(RENDERER(view, now()).render(snapshot))
 
                 if handle_keys(screen, view, sessions, interval) then
                     break;
                 fi
             od
 
-            screen.leave();
+            screen.leave()
 
             return 0;
         si
@@ -123,15 +123,15 @@ namespace Dashboard is
         // frame usually reads them cleanly.
         collect_quietly(collector: COLLECTOR, view: VIEW) -> SNAPSHOT? static is
             try
-                let snapshot = collector.collect();
+                let snapshot = collector.collect()
 
-                collector.resolve_locations(snapshot);
+                collector.resolve_locations(snapshot)
 
-                view.message = null;
+                view.message = null
 
                 return snapshot;
             catch ex: Exception
-                view.message = "collector failed: {ex.message}";
+                view.message = "collector failed: {ex.message}"
 
                 return null;
             yrt
@@ -141,15 +141,15 @@ namespace Dashboard is
         // keeps its own cadence whether or not anything is typed. Returns true
         // when the user asked to quit.
         handle_keys(screen: SCREEN, view: VIEW, sessions: Collections.MutableList[SESSION], interval: int) -> bool static is
-            let poll = 40;
+            let poll = 40
 
-            let waited mut = 0;
+            let waited mut = 0
 
             while waited < interval do
                 // One key per pass: each returns to repaint before the next is
                 // read, so held-down arrows scroll at the refresh rate.
                 if Std.key_available then
-                    let key = Std.read_key(true);
+                    let key = Std.read_key(true)
 
                     // Ctrl-C arrives as input while the alternate screen is up,
                     // so it has to be handled rather than ending the process.
@@ -160,32 +160,32 @@ namespace Dashboard is
                     then
                         return true;
                     elif key.key == System.ConsoleKey.UP_ARROW then
-                        view.clear_pending_kill();
-                        view.move(sessions, -1);
+                        view.clear_pending_kill()
+                        view.move(sessions, -1)
                         return false;
                     elif key.key == System.ConsoleKey.DOWN_ARROW then
-                        view.clear_pending_kill();
-                        view.move(sessions, 1);
+                        view.clear_pending_kill()
+                        view.move(sessions, 1)
                         return false;
                     elif key.key_char == cast char(12) then
                         // Ctrl-L: repaint from nothing, the conventional escape
                         // from a screen another program has scribbled on.
-                        screen.clear();
+                        screen.clear()
                         return false;
                     elif key.key_char == 'k' then
-                        request_kill(view, sessions);
+                        request_kill(view, sessions)
                         return false;
                     elif view.pending_kill_pid > 0 /\ (key.key_char == 'y' \/ key.key_char == 'Y') then
-                        confirm_kill(view);
+                        confirm_kill(view)
                         return false;
                     elif view.pending_kill_pid > 0 then
-                        view.clear_pending_kill();
-                        view.message = null;
+                        view.clear_pending_kill()
+                        view.message = null
                         return false;
                     fi
                 fi
 
-                System.Threading.Thread.sleep(poll);
+                System.Threading.Thread.sleep(poll)
 
                 waited = waited + poll;
             od
@@ -194,10 +194,10 @@ namespace Dashboard is
         si
 
         request_kill(view: VIEW, sessions: Collections.MutableList[SESSION]) static is
-            let session = view.get_selected(sessions);
+            let session = view.get_selected(sessions)
 
             if !session? then
-                view.message = "no session selected";
+                view.message = "no session selected"
                 return;
             fi
 
@@ -205,27 +205,27 @@ namespace Dashboard is
             // take the dashboard with it. That session is an ancestor rather
             // than this process, since it spawned us — and it is usually the
             // top row, being the most recently active.
-            let candidates = Collections.SET[int]();
+            let candidates = Collections.SET[int]()
 
-            candidates.add(session.pid);
+            candidates.add(session.pid)
 
             if PROCESS_TREE.find_ancestor(System.Environment.process_id, candidates) > 0 then
-                view.message = "that session is running this dashboard";
+                view.message = "that session is running this dashboard"
                 return;
             fi
 
-            view.pending_kill_pid = session.pid;
+            view.pending_kill_pid = session.pid
             view.message = null;
         si
 
         // SIGTERM rather than a kill: a session asked to stop can save its
         // transcript and exit cleanly, which SIGKILL would deny it.
         confirm_kill(view: VIEW) static is
-            let pid = view.pending_kill_pid;
+            let pid = view.pending_kill_pid
 
-            view.clear_pending_kill();
+            view.clear_pending_kill()
 
-            let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"]);
+            let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"])
 
             if string.is_null_or_white_space(output) then
                 view.message = "sent SIGTERM to {pid}";
@@ -239,7 +239,7 @@ namespace Dashboard is
         // built into — which is inside the workspace however it was launched,
         // so running it from an unrelated shell still works.
         find_workspace() -> string? static is
-            let override = System.Environment.get_environment_variable("GHUL_WORKSPACE");
+            let override = System.Environment.get_environment_variable("GHUL_WORKSPACE")
 
             if !string.is_null_or_white_space(override) /\ Directory.exists(override) then
                 return override;
@@ -255,22 +255,22 @@ namespace Dashboard is
                 return null;
             fi
 
-            let current mut = start!;
+            let current mut = start!
 
-            let hops mut = 0;
+            let hops mut = 0
 
             while hops < 16 do
                 if File.exists(Path.join(current, "CLAUDE.md")) /\ Directory.exists(Path.join(current, "worktrees")) then
                     return current;
                 fi
 
-                let parent = Directory.get_parent(current);
+                let parent = Directory.get_parent(current)
 
                 if !parent? then
                     return null;
                 fi
 
-                current = parent.full_name;
+                current = parent.full_name
 
                 hops = hops + 1;
             od
@@ -279,12 +279,12 @@ namespace Dashboard is
         si
 
         now() -> long static =>
-            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds()
 
         write_usage() static is
-            Std.write_line("usage: ghul-dashboard [--interval <seconds>] [--once]");
-            Std.write_line("");
-            Std.write_line("  Live view of Claude Code sessions, test runs and open pull requests");
+            Std.write_line("usage: ghul-dashboard [--interval <seconds>] [--once]")
+            Std.write_line("")
+            Std.write_line("  Live view of Claude Code sessions, test runs and open pull requests")
             Std.write_line("  across the ghūl workspace. Press q to quit.");
         si
     si

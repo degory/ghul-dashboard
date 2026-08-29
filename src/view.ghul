@@ -1,27 +1,27 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.MutableList;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.MutableList
+    use Collections.LIST
 
     // What the user has done to the view, as opposed to what the machine is
     // doing. Selection tracks a pid rather than a row, because rows reorder as
     // sessions become active.
     class VIEW is
-        width: int public;
-        height: int public;
+        width: int public
+        height: int public
 
-        selected_pid: int public;
+        selected_pid: int public
 
         // Set while a kill is awaiting confirmation, so a stray keystroke
         // cannot terminate a session.
-        pending_kill_pid: int public;
+        pending_kill_pid: int public
 
-        message: string? public;
+        message: string? public
 
         init() is si
 
         get_selected_index(sessions: MutableList[SESSION]) -> int is
-            let index mut = 0;
+            let index mut = 0
 
             while index < sessions.count do
                 if sessions[index].pid == selected_pid then
@@ -39,18 +39,18 @@ namespace Dashboard is
         // row rather than nothing.
         move(sessions: MutableList[SESSION], delta: int) is
             if sessions.count == 0 then
-                selected_pid = 0;
+                selected_pid = 0
                 return;
             fi
 
-            let current = get_selected_index(sessions);
+            let current = get_selected_index(sessions)
 
             if current < 0 then
-                selected_pid = sessions[0].pid;
+                selected_pid = sessions[0].pid
                 return;
             fi
 
-            let next mut = current + delta;
+            let next mut = current + delta
 
             if next < 0 then
                 next = 0;
@@ -62,7 +62,7 @@ namespace Dashboard is
         si
 
         get_selected(sessions: MutableList[SESSION]) -> SESSION? is
-            let index = get_selected_index(sessions);
+            let index = get_selected_index(sessions)
 
             if index < 0 then
                 return null;

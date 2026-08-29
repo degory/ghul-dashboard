@@ -1,8 +1,8 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
     // Text handling shared by the parsers. Everything here is a pure function
     // of its argument, which is what makes the parsers testable without a
@@ -11,14 +11,14 @@ namespace Dashboard is
         // Splits on any line ending and drops blank lines: every caller is
         // parsing line-oriented output.
         lines(text: string?) -> Iterable[string] static is
-            let result = LIST[string]();
+            let result = LIST[string]()
 
             if string.is_null_or_empty(text) then
                 return result;
             fi
 
             for line in text!.split(['\n']) do
-                let trimmed = line.trim_end(['\r']);
+                let trimmed = line.trim_end(['\r'])
 
                 if !string.is_null_or_empty(trimmed) then
                     result.add(trimmed);
@@ -31,7 +31,7 @@ namespace Dashboard is
         // Splits on spaces, dropping the empty strings that runs of spaces
         // produce — /proc pads its columns.
         words(text: string?) -> Iterable[string] static is
-            let result = LIST[string]();
+            let result = LIST[string]()
 
             if string.is_null_or_empty(text) then
                 return result;
@@ -57,7 +57,7 @@ namespace Dashboard is
         si
 
         to_int(text: string?) -> int static =>
-            cast int(to_long(text));
+            cast int(to_long(text))
 
         to_double(text: string?) -> double static is
             try

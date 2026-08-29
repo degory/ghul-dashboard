@@ -1,5 +1,5 @@
 namespace Tests is
-    use MSTEST = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+    use MSTEST = Microsoft.VisualStudio.TestTools.UnitTesting.Assert
 
     // Assertions, as global functions, so the tests read as statements and no
     // test file names MSTest directly.

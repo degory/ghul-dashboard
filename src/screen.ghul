@@ -1,25 +1,25 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
+    use Collections.Iterable
 
-    use IO.Std;
+    use IO.Std
 
     // Terminal painting. Frames are repainted in place — cursor home, then each
     // line cleared as it is rewritten — rather than clearing the screen first,
     // which flickers.
     class SCREEN is
-        escape: string static => "{cast char(27)}";
+        escape: string static => "{cast char(27)}"
 
         // Set once the alternate screen is in use, so a failure to restore is
         // not attempted twice.
-        _entered: bool;
+        _entered: bool
 
         init() is si
 
         width: int is
             try
-                let width = Std.window_width;
+                let width = Std.window_width
 
                 if width > 0 then
                     return width;
@@ -33,7 +33,7 @@ namespace Dashboard is
 
         height: int is
             try
-                let height = Std.window_height;
+                let height = Std.window_height
 
                 if height > 0 then
                     return height;
@@ -55,7 +55,7 @@ namespace Dashboard is
                 _entered = _entered;
             yrt
 
-            Std.write("{escape}[?1049h{escape}[?25l");
+            Std.write("{escape}[?1049h{escape}[?25l")
 
             _entered = true;
         si
@@ -65,9 +65,9 @@ namespace Dashboard is
                 return;
             fi
 
-            Std.write("{escape}[?25h{escape}[?1049l");
+            Std.write("{escape}[?25h{escape}[?1049l")
 
-            _entered = false;
+            _entered = false
 
             try
                 Std.treat_control_c_as_input = false;
@@ -77,17 +77,17 @@ namespace Dashboard is
         si
 
         paint(lines: Iterable[string]) is
-            let text = System.Text.StringBuilder();
+            let text = System.Text.StringBuilder()
 
-            text.append("{escape}[H");
+            text.append("{escape}[H")
 
             for line in lines do
-                text.append(line);
-                text.append("{escape}[K");
+                text.append(line)
+                text.append("{escape}[K")
                 text.append("\n");
             od
 
-            text.append("{escape}[J");
+            text.append("{escape}[J")
 
             Std.write(text.to_string());
         si
@@ -111,7 +111,7 @@ namespace Dashboard is
         si
 
         pad(text: string?, width: int) -> string static =>
-            clip(text, width).pad_right(width);
+            clip(text, width).pad_right(width)
 
         // Clears everything before the next paint. The incremental paint only
         // rewrites the lines it draws, so anything left by a resize — or by
@@ -120,14 +120,14 @@ namespace Dashboard is
             Std.write("{escape}[2J{escape}[H");
         si
 
-        reverse(text: string) -> string static => paint_text(text, "7");
-        dim(text: string) -> string static => paint_text(text, "2");
-        red(text: string) -> string static => paint_text(text, "01;31");
-        green(text: string) -> string static => paint_text(text, "01;32");
-        yellow(text: string) -> string static => paint_text(text, "01;33");
-        blue(text: string) -> string static => paint_text(text, "01;34");
-        cyan(text: string) -> string static => paint_text(text, "01;36");
-        bold(text: string) -> string static => paint_text(text, "01");
+        reverse(text: string) -> string static => paint_text(text, "7")
+        dim(text: string) -> string static => paint_text(text, "2")
+        red(text: string) -> string static => paint_text(text, "01;31")
+        green(text: string) -> string static => paint_text(text, "01;32")
+        yellow(text: string) -> string static => paint_text(text, "01;33")
+        blue(text: string) -> string static => paint_text(text, "01;34")
+        cyan(text: string) -> string static => paint_text(text, "01;36")
+        bold(text: string) -> string static => paint_text(text, "01")
 
         paint_text(text: string, code: string) -> string static =>
             "{escape}[{code}m{text}{escape}[00m";

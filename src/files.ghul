@@ -1,12 +1,12 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
-    use IO.File;
-    use IO.Directory;
-    use IO.StreamReader;
+    use IO.File
+    use IO.Directory
+    use IO.StreamReader
 
     // Reading the files the dashboard watches. Absent, unreadable and
     // half-written files all read as empty rather than throwing: these are other
@@ -26,17 +26,17 @@ namespace Dashboard is
         // megabytes, so read a bounded window back from the end.
         read_tail(path: string, length: long) -> string static is
             try
-                let stream = File.open_read(path);
+                let stream = File.open_read(path)
 
                 if stream.length > length then
                     stream.seek(stream.length - length, IO.SeekOrigin.BEGIN);
                 fi
 
-                let reader = StreamReader(stream);
+                let reader = StreamReader(stream)
 
-                let text = reader.read_to_end();
+                let text = reader.read_to_end()
 
-                reader.dispose();
+                reader.dispose()
 
                 return text;
             catch ex: Exception

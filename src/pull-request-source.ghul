@@ -1,9 +1,9 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
-    use IO.Path;
-    use IO.File;
+    use IO.Path
+    use IO.File
 
     // The open pull requests across the workspace's repositories, from one `gh`
     // search.
@@ -13,20 +13,20 @@ namespace Dashboard is
     // previous result rather than reporting none, since an empty list would read
     // as "nothing open" — which is a different and more alarming statement.
     class PULL_REQUEST_SOURCE is
-        refresh_interval_ms: long static => 120000L;
+        refresh_interval_ms: long static => 120000L
 
-        _workspace: WORKTREE_SOURCE;
+        _workspace: WORKTREE_SOURCE
 
         // Discovered once: the set of checkouts does not change under us.
-        _scope: Iterable[string]?;
+        _scope: Iterable[string]?
 
-        _pull_requests: Iterable[PULL_REQUEST];
-        _fetched_at: long;
+        _pull_requests: Iterable[PULL_REQUEST]
+        _fetched_at: long
 
-        fetched_at: long => _fetched_at;
+        fetched_at: long => _fetched_at
 
         init(workspace: WORKTREE_SOURCE) is
-            _workspace = workspace;
+            _workspace = workspace
             _pull_requests = LIST[PULL_REQUEST]();
         si
 
@@ -35,20 +35,20 @@ namespace Dashboard is
                 return _pull_requests;
             fi
 
-            let scope = get_scope();
+            let scope = get_scope()
 
             if scope| .count() == 0 then
                 return _pull_requests;
             fi
 
-            let output = search(scope);
+            let output = search(scope)
 
             if string.is_null_or_white_space(output) then
                 return _pull_requests;
             fi
 
-            _pull_requests = PULL_REQUEST_ROWS.parse(output) | .collect_list();
-            _fetched_at = now;
+            _pull_requests = PULL_REQUEST_ROWS.parse(output) | .collect_list()
+            _fetched_at = now
 
             return _pull_requests;
         si
@@ -56,15 +56,15 @@ namespace Dashboard is
         // Every brace is doubled: a single brace opens a string interpolation,
         // and GraphQL is nothing but braces.
         query: string static =>
-            "query($q:String!){{search(query:$q,type:ISSUE,first:60){{nodes{{... on PullRequest{{number headRefName repository{{name}} reviewDecision commits(last:1){{nodes{{commit{{statusCheckRollup{{state}}}}}}}}}}}}}}}}";
+            "query($q:String!){{search(query:$q,type:ISSUE,first:60){{nodes{{... on PullRequest{{number headRefName repository{{name}} reviewDecision commits(last:1){{nodes{{commit{{statusCheckRollup{{state}}}}}}}}}}}}}}}}"
 
         // `gh` reduces the response to tab-separated rows, so nothing here has
         // to walk a JSON document.
         filter: string static =>
-            ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv";
+            ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv"
 
         search(scope: Iterable[string]) -> string is
-            let terms = scope| .to_string(" ");
+            let terms = scope| .to_string(" ")
 
             return
                 PROCESS_RUNNER.run(
@@ -76,9 +76,9 @@ namespace Dashboard is
         // The workspace's `gh` wrapper supplies the bot credentials, and it is
         // only on PATH for interactive shells, so prefer it explicitly.
         get_gh_path() -> string static is
-            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE)
 
-            let wrapper = Path.join(home, ".local", "bin", "gh");
+            let wrapper = Path.join(home, ".local", "bin", "gh")
 
             if File.exists(wrapper) then
                 return wrapper;
@@ -92,13 +92,13 @@ namespace Dashboard is
                 return _scope;
             fi
 
-            let result = LIST[string]();
+            let result = LIST[string]()
 
             for repository in _workspace.list_repositories() do
-                let output = PROCESS_RUNNER.run("git", ["-C", repository, "remote", "get-url", "origin"]);
+                let output = PROCESS_RUNNER.run("git", ["-C", repository, "remote", "get-url", "origin"])
 
                 for line in TEXT.lines(output) do
-                    let slug = get_repository_slug(line);
+                    let slug = get_repository_slug(line)
 
                     if slug? then
                         result.add("repo:{slug}");
@@ -106,7 +106,7 @@ namespace Dashboard is
                 od
             od
 
-            _scope = result;
+            _scope = result
 
             return result;
         si
@@ -114,13 +114,13 @@ namespace Dashboard is
         // Reduces either remote form — git@host:owner/name.git or
         // https://host/owner/name — to owner/name.
         get_repository_slug(url: string) -> string? static is
-            let trimmed mut = url.trim();
+            let trimmed mut = url.trim()
 
             if trimmed.ends_with(".git") then
                 trimmed = trimmed.substring(0, trimmed.length - 4);
             fi
 
-            let parts = trimmed.split(['/', ':']);
+            let parts = trimmed.split(['/', ':'])
 
             if parts.count < 2 then
                 return null;

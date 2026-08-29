@@ -1,7 +1,7 @@
 namespace Tests is
-    use Dashboard;
-    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute;
-    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute;
+    use Dashboard
+    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute
+    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute
 
     @TestClass()
     class LAYOUT_TESTS is
@@ -13,7 +13,7 @@ namespace Tests is
         @Test()
         layout__get_session_columns__fills_the_width_exactly() is
             for width in [60, 80, 100, 137, 200] do
-                let columns = LAYOUT.get_session_columns(width);
+                let columns = LAYOUT.get_session_columns(width)
 
                 are_equal(
                     width,
@@ -24,7 +24,7 @@ namespace Tests is
 
         @Test()
         layout__get_session_columns__gives_the_name_more_room_than_the_worktree() is
-            let columns = LAYOUT.get_session_columns(120);
+            let columns = LAYOUT.get_session_columns(120)
 
             is_true(columns.name > columns.where);
         si
@@ -33,7 +33,7 @@ namespace Tests is
         // too narrow to read.
         @Test()
         layout__get_session_columns__stops_shrinking_at_a_floor() is
-            let columns = LAYOUT.get_session_columns(20);
+            let columns = LAYOUT.get_session_columns(20)
 
             are_equal(LAYOUT.minimum_elastic_width, columns.name + columns.where);
         si
@@ -41,7 +41,7 @@ namespace Tests is
         @Test()
         layout__get_pull_request_columns__fills_the_width_exactly_when_every_column_fits() is
             for width in [80, 100, 160] do
-                let columns = LAYOUT.get_pull_request_columns(width);
+                let columns = LAYOUT.get_pull_request_columns(width)
 
                 are_equal(
                     width,
@@ -58,18 +58,18 @@ namespace Tests is
         // first when there is not room for everything.
         @Test()
         layout__get_pull_request_columns__drops_the_repository_before_the_branch_suffers() is
-            let columns = LAYOUT.get_pull_request_columns(50);
+            let columns = LAYOUT.get_pull_request_columns(50)
 
-            are_equal(0, columns.repository);
+            are_equal(0, columns.repository)
             is_true(columns.branch >= LAYOUT.minimum_branch_width);
         si
 
         @Test()
         layout__get_pull_request_columns__drops_the_checks_state_next() is
-            let columns = LAYOUT.get_pull_request_columns(40);
+            let columns = LAYOUT.get_pull_request_columns(40)
 
-            are_equal(0, columns.repository);
-            are_equal(0, columns.checks);
+            are_equal(0, columns.repository)
+            are_equal(0, columns.checks)
             is_true(columns.review > 0);
         si
 
@@ -83,8 +83,8 @@ namespace Tests is
 
         @Test()
         layout__get_meter_width__grows_with_the_window_up_to_a_cap() is
-            are_equal(LAYOUT.maximum_meter_width, LAYOUT.get_meter_width(400));
-            is_true(LAYOUT.get_meter_width(90) < LAYOUT.maximum_meter_width);
+            are_equal(LAYOUT.maximum_meter_width, LAYOUT.get_meter_width(400))
+            is_true(LAYOUT.get_meter_width(90) < LAYOUT.maximum_meter_width)
             is_true(LAYOUT.get_meter_width(90) > LAYOUT.minimum_meter_width);
         si
 
@@ -97,7 +97,7 @@ namespace Tests is
 
         @Test()
         layout__get_session_rows__leaves_the_runs_and_pull_requests_their_rows() is
-            let rows = LAYOUT.get_session_rows(40, 6, 8);
+            let rows = LAYOUT.get_session_rows(40, 6, 8)
 
             are_equal(40 - LAYOUT.panel_furniture_rows - 6 - 8, rows);
         si
@@ -111,7 +111,7 @@ namespace Tests is
 
         @Test()
         layout__get_capped__limits_a_count_to_the_cap() is
-            are_equal(3, LAYOUT.get_capped(10, 3));
+            are_equal(3, LAYOUT.get_capped(10, 3))
             are_equal(2, LAYOUT.get_capped(2, 3));
         si
     si
@@ -122,20 +122,20 @@ namespace Tests is
 
         @Test()
         line_builder__try_append__accepts_segments_while_they_fit() is
-            let line = LINE_BUILDER(10);
+            let line = LINE_BUILDER(10)
 
-            is_true(line.try_append(5, "hello"));
-            is_true(line.try_append(5, "world"));
+            is_true(line.try_append(5, "hello"))
+            is_true(line.try_append(5, "world"))
             are_equal("helloworld", line.to_string());
         si
 
         @Test()
         line_builder__try_append__refuses_a_segment_that_would_overrun() is
-            let line = LINE_BUILDER(10);
+            let line = LINE_BUILDER(10)
 
-            line.try_append(8, "12345678");
+            line.try_append(8, "12345678")
 
-            is_false(line.try_append(5, "12345"));
+            is_false(line.try_append(5, "12345"))
             are_equal("12345678", line.to_string());
         si
 
@@ -143,12 +143,12 @@ namespace Tests is
         // could still use.
         @Test()
         line_builder__try_append__still_accepts_a_smaller_segment_after_refusing_one() is
-            let line = LINE_BUILDER(10);
+            let line = LINE_BUILDER(10)
 
-            line.try_append(8, "12345678");
-            line.try_append(5, "12345");
+            line.try_append(8, "12345678")
+            line.try_append(5, "12345")
 
-            is_true(line.try_append(2, "ab"));
+            is_true(line.try_append(2, "ab"))
             are_equal("12345678ab", line.to_string());
         si
 
@@ -156,19 +156,19 @@ namespace Tests is
         // width is supplied rather than measured.
         @Test()
         line_builder__try_append__counts_the_supplied_width_not_the_text_length() is
-            let line = LINE_BUILDER(4);
+            let line = LINE_BUILDER(4)
 
-            is_true(line.try_append(4, SCREEN.red("busy")));
+            is_true(line.try_append(4, SCREEN.red("busy")))
             are_equal(0, line.remaining);
         si
 
         @Test()
         line_builder__remaining__reports_the_unused_width() is
-            let line = LINE_BUILDER(10);
+            let line = LINE_BUILDER(10)
 
-            line.try_append(4, "abcd");
+            line.try_append(4, "abcd")
 
-            are_equal(6, line.remaining);
+            are_equal(6, line.remaining)
             are_equal(4, line.used);
         si
     si

@@ -1,25 +1,25 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
-    use IO.Path;
-    use IO.File;
-    use IO.Directory;
+    use IO.Path
+    use IO.File
+    use IO.Directory
 
     // The checkouts under the workspace, and the worktrees each of them has.
     //
     // One `git` invocation per checkout is too much to repeat every frame, and
     // worktrees come and go on a human timescale, so the answer is cached.
     class WORKTREE_SOURCE is
-        refresh_interval_ms: long static => 10000L;
+        refresh_interval_ms: long static => 10000L
 
-        _workspace: string;
+        _workspace: string
 
-        _worktrees: Iterable[WORKTREE];
-        _collected_at: long;
+        _worktrees: Iterable[WORKTREE]
+        _collected_at: long
 
         init(workspace: string) is
-            _workspace = workspace;
+            _workspace = workspace
             _worktrees = LIST[WORKTREE]();
         si
 
@@ -28,12 +28,12 @@ namespace Dashboard is
                 return _worktrees;
             fi
 
-            let result = LIST[WORKTREE]();
+            let result = LIST[WORKTREE]()
 
             for repository in list_repositories() do
-                let name = FILES.name_of(repository);
+                let name = FILES.name_of(repository)
 
-                let output = PROCESS_RUNNER.run("git", ["-C", repository, "worktree", "list", "--porcelain"]);
+                let output = PROCESS_RUNNER.run("git", ["-C", repository, "worktree", "list", "--porcelain"])
 
                 for worktree in WORKTREE_LIST.parse(name, output) do
                     result.add(worktree);
@@ -46,8 +46,8 @@ namespace Dashboard is
                 return _worktrees;
             fi
 
-            _worktrees = result;
-            _collected_at = now;
+            _worktrees = result
+            _collected_at = now
 
             return result;
         si
@@ -56,10 +56,10 @@ namespace Dashboard is
         // file pointing at the primary's, rather than a directory, so both
         // shapes count.
         list_repositories() -> Iterable[string] is
-            let result = LIST[string]();
+            let result = LIST[string]()
 
             for directory in FILES.list_directories(_workspace) do
-                let marker = Path.join(directory, ".git");
+                let marker = Path.join(directory, ".git")
 
                 if Directory.exists(marker) \/ File.exists(marker) then
                     result.add(directory);

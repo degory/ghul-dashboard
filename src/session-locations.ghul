@@ -1,13 +1,13 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.MutableList;
-    use Collections.MutableMap;
-    use Collections.LIST;
-    use Collections.MAP;
-    use Collections.SET;
+    use Collections.Iterable
+    use Collections.MutableList
+    use Collections.MutableMap
+    use Collections.LIST
+    use Collections.MAP
+    use Collections.SET
 
-    use IO.File;
-    use IO.Path;
+    use IO.File
+    use IO.Path
 
     // Works out which worktree each session is working in.
     //
@@ -18,13 +18,13 @@ namespace Dashboard is
     // recorded in the session's transcript is the best available answer.
     class SESSION_LOCATIONS is
         // Transcripts reach tens of megabytes and only the end is interesting.
-        transcript_tail_bytes: long static => 262144L;
+        transcript_tail_bytes: long static => 262144L
 
-        _workspace: string;
-        _projects_directory: string;
+        _workspace: string
+        _projects_directory: string
 
         init(workspace: string, home: string) is
-            _workspace = workspace;
+            _workspace = workspace
             _projects_directory = Path.join(home, ".claude", "projects");
         si
 
@@ -35,16 +35,16 @@ namespace Dashboard is
             runs: Iterable[RUN],
             worktrees: Iterable[WORKTREE]
         ) is
-            let pids = SET[int]();
+            let pids = SET[int]()
 
             for session in sessions do
                 pids.add(session.pid);
             od
 
-            let owners = MAP[int,string]();
+            let owners = MAP[int,string]()
 
             for run in runs do
-                let owner = PROCESS_TREE.find_ancestor(run.pid, pids);
+                let owner = PROCESS_TREE.find_ancestor(run.pid, pids)
 
                 if owner > 0 then
                     owners[owner] = run.cwd;
@@ -66,7 +66,7 @@ namespace Dashboard is
                     continue;
                 fi
 
-                let directory = read_last_directory(session);
+                let directory = read_last_directory(session)
 
                 if directory? then
                     session.where = describe(directory, worktrees);
@@ -81,9 +81,9 @@ namespace Dashboard is
 
             // Transcripts live in a directory named for the session's own
             // directory with every path separator replaced by a dash.
-            let project = session.cwd.replace("/", "-");
+            let project = session.cwd.replace("/", "-")
 
-            let path = Path.join(_projects_directory, project, "{session.session_id}.jsonl");
+            let path = Path.join(_projects_directory, project, "{session.session_id}.jsonl")
 
             if !File.exists(path) then
                 return null;
@@ -95,16 +95,16 @@ namespace Dashboard is
         // Each transcript entry carries the directory it ran in. The last one
         // wins, so this scans backwards from the end of the window.
         find_last_directory(tail: string) -> string? static is
-            let marker = "\"cwd\":\"";
+            let marker = "\"cwd\":\""
 
-            let at = tail.last_index_of(marker);
+            let at = tail.last_index_of(marker)
 
             if at < 0 then
                 return null;
             fi
 
-            let from = at + marker.length;
-            let to = tail.index_of('"', from);
+            let from = at + marker.length
+            let to = tail.index_of('"', from)
 
             if to < 0 then
                 return null;

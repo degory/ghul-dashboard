@@ -1,33 +1,33 @@
 namespace Dashboard is
-    use Collections.Iterable;
+    use Collections.Iterable
 
     // ghul-test's run status file. The shape is a wire contract shared with
     // the writer, so `version` gates any incompatible change to it.
     class RUN is
-        version: int public;
+        version: int public
 
-        pid: int public;
-        cwd: string public;
-        suites: string[] public;
+        pid: int public
+        cwd: string public
+        suites: string[] public
 
-        state: string? public;
+        state: string? public
 
-        started_at: long public;
-        updated_at: long public;
+        started_at: long public
+        updated_at: long public
 
-        total: int public;
-        completed: int public;
-        passed: int public;
-        failed: int public;
-        skipped: int public;
-        percent: int public;
+        total: int public
+        completed: int public
+        passed: int public
+        failed: int public
+        skipped: int public
+        percent: int public
 
-        running: string[] public;
-        last: string? public;
+        running: string[] public
+        last: string? public
 
-        is_done: bool => state? /\ state =~ "done";
+        is_done: bool => state? /\ state =~ "done"
 
-        elapsed_seconds: int => cast int((updated_at - started_at) / 1000L);
+        elapsed_seconds: int => cast int((updated_at - started_at) / 1000L)
 
         init() is si
     si
@@ -35,21 +35,21 @@ namespace Dashboard is
     // Claude Code's per-process session record. Wire names are camelCase, so
     // this is deserialized with the camel-case naming policy.
     class SESSION is
-        pid: int public;
-        session_id: string? public;
-        cwd: string? public;
-        started_at: long public;
-        version: string? public;
-        kind: string? public;
-        name: string? public;
-        status: string? public;
-        status_updated_at: long public;
-        job_id: string? public;
+        pid: int public
+        session_id: string? public
+        cwd: string? public
+        started_at: long public
+        version: string? public
+        kind: string? public
+        name: string? public
+        status: string? public
+        status_updated_at: long public
+        job_id: string? public
 
         // Filled in from the process tree and transcript, not the wire.
-        where: string? public;
+        where: string? public
 
-        is_background: bool => kind? /\ kind =~ "bg";
+        is_background: bool => kind? /\ kind =~ "bg"
 
         init() is si
     si
@@ -57,24 +57,24 @@ namespace Dashboard is
     // A moment's worth of machine load. Processor figures are deltas, so they
     // are zero on the first sample.
     class SYSTEM is
-        processor_percent: double public;
-        core_percents: double[] public;
-        load_average: double public;
+        processor_percent: double public
+        core_percents: double[] public
+        load_average: double public
 
-        memory_total_kb: long public;
-        memory_available_kb: long public;
-        swap_total_kb: long public;
-        swap_free_kb: long public;
+        memory_total_kb: long public
+        memory_available_kb: long public
+        swap_total_kb: long public
+        swap_free_kb: long public
 
-        top: Iterable[PROCESS_LOAD] public;
+        top: Iterable[PROCESS_LOAD] public
 
-        memory_used_kb: long => memory_total_kb - memory_available_kb;
-        swap_used_kb: long => swap_total_kb - swap_free_kb;
+        memory_used_kb: long => memory_total_kb - memory_available_kb
+        swap_used_kb: long => swap_total_kb - swap_free_kb
 
-        memory_percent: double => FORMAT.ratio(memory_used_kb, memory_total_kb);
+        memory_percent: double => FORMAT.ratio(memory_used_kb, memory_total_kb)
 
         init() is
-            core_percents = [];
+            core_percents = []
             top = Collections.LIST[PROCESS_LOAD]();
         si
     si
@@ -82,23 +82,23 @@ namespace Dashboard is
     // One process's share of the machine, as a percentage of a single core, so
     // a value over 100 means it is spread across more than one.
     class PROCESS_LOAD is
-        pid: int;
-        name: string;
-        processor_percent: double;
+        pid: int
+        name: string
+        processor_percent: double
 
         init(pid: int, name: string, processor_percent: double) is
-            self.pid = pid;
-            self.name = name;
+            self.pid = pid
+            self.name = name
             self.processor_percent = processor_percent;
         si
     si
 
     class WORKTREE is
-        path: string;
-        repository: string;
-        branch: string;
+        path: string
+        repository: string
+        branch: string
 
-        slug: string => path.substring(path.last_index_of('/') + 1);
+        slug: string => path.substring(path.last_index_of('/') + 1)
 
         // A primary checkout's directory is the repository name, so naming it
         // <repo>/<slug> would say the same word twice.
@@ -107,30 +107,30 @@ namespace Dashboard is
                 repository;
             else
                 "{repository}/{slug}";
-            fi;
+            fi
 
         init(repository: string, path: string, branch: string) is
-            self.repository = repository;
-            self.path = path;
+            self.repository = repository
+            self.path = path
             self.branch = branch;
         si
     si
 
     class PULL_REQUEST is
-        number: int;
-        branch: string;
-        repository: string;
-        review: string;
-        checks: string;
+        number: int
+        branch: string
+        repository: string
+        review: string
+        checks: string
 
-        is_bad: bool => review =~ "CHANGES_REQUESTED" \/ checks =~ "FAILURE" \/ checks =~ "ERROR";
-        is_good: bool => review =~ "APPROVED" /\ (checks =~ "SUCCESS" \/ checks =~ "NONE");
+        is_bad: bool => review =~ "CHANGES_REQUESTED" \/ checks =~ "FAILURE" \/ checks =~ "ERROR"
+        is_good: bool => review =~ "APPROVED" /\ (checks =~ "SUCCESS" \/ checks =~ "NONE")
 
         init(number: int, branch: string, repository: string, review: string, checks: string) is
-            self.number = number;
-            self.branch = branch;
-            self.repository = repository;
-            self.review = review;
+            self.number = number
+            self.branch = branch
+            self.repository = repository
+            self.review = review
             self.checks = checks;
         si
     si
@@ -138,16 +138,16 @@ namespace Dashboard is
     // Everything one frame draws, collected together so a redraw cannot mix
     // two generations of data.
     class SNAPSHOT is
-        sessions: Iterable[SESSION];
-        runs: Iterable[RUN];
-        worktrees: Iterable[WORKTREE];
-        pull_requests: Iterable[PULL_REQUEST];
+        sessions: Iterable[SESSION]
+        runs: Iterable[RUN]
+        worktrees: Iterable[WORKTREE]
+        pull_requests: Iterable[PULL_REQUEST]
 
         // Null until the first successful fetch; the pull-request panel says
         // so rather than showing an empty list as though there were none.
-        pull_requests_fetched_at: long public;
+        pull_requests_fetched_at: long public
 
-        system: SYSTEM? public;
+        system: SYSTEM? public
 
         init(
             sessions: Iterable[SESSION],
@@ -155,9 +155,9 @@ namespace Dashboard is
             worktrees: Iterable[WORKTREE],
             pull_requests: Iterable[PULL_REQUEST]
         ) is
-            self.sessions = sessions;
-            self.runs = runs;
-            self.worktrees = worktrees;
+            self.sessions = sessions
+            self.runs = runs
+            self.worktrees = worktrees
             self.pull_requests = pull_requests;
         si
     si

@@ -1,15 +1,15 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
-    use Collections.MutableList;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.MutableList
+    use Collections.LIST
 
-    use IO.Path;
+    use IO.Path
 
-    use System.Text.Json.JsonSerializer;
-    use System.Text.Json.JsonSerializerOptions;
-    use System.Text.Json.JsonNamingPolicy;
+    use System.Text.Json.JsonSerializer
+    use System.Text.Json.JsonSerializerOptions
+    use System.Text.Json.JsonNamingPolicy
 
     // Claude Code writes its session records with camelCase keys, so the policy
     // has to bridge ghūl's member naming rather than merely adjust the first
@@ -18,15 +18,15 @@ namespace Dashboard is
         init() is si
 
         convert_name(name: string) -> string is
-            let result = System.Text.StringBuilder();
+            let result = System.Text.StringBuilder()
 
-            let capitalize mut = false;
+            let capitalize mut = false
 
             for c in name do
                 if c == '_' then
                     capitalize = true;
                 elif capitalize then
-                    result.append(char.to_upper(c));
+                    result.append(char.to_upper(c))
                     capitalize = false;
                 else
                     result.append(c);
@@ -67,27 +67,27 @@ namespace Dashboard is
     // Reads the live Claude Code sessions from the per-process records the
     // client writes.
     class SESSION_SOURCE is
-        _directory: string;
-        _options: JsonSerializerOptions;
-        _order: MOST_RECENTLY_ACTIVE;
+        _directory: string
+        _options: JsonSerializerOptions
+        _order: MOST_RECENTLY_ACTIVE
 
         init(home: string) is
-            _directory = Path.join(home, ".claude", "sessions");
+            _directory = Path.join(home, ".claude", "sessions")
 
             // Fields are deliberately not included: the record's members are
             // properties, and including fields would emit each property's
             // backing field alongside it.
-            _options = JsonSerializerOptions();
-            _options.property_naming_policy = SNAKE_TO_CAMEL_CASE();
+            _options = JsonSerializerOptions()
+            _options.property_naming_policy = SNAKE_TO_CAMEL_CASE()
 
             _order = MOST_RECENTLY_ACTIVE();
         si
 
         collect() -> MutableList[SESSION] is
-            let result = LIST[SESSION]();
+            let result = LIST[SESSION]()
 
             for path in FILES.list(_directory, "*.json") do
-                let session = read(path);
+                let session = read(path)
 
                 // A record outlives the process it describes, so liveness is
                 // decided by the process, not the file.
@@ -96,13 +96,13 @@ namespace Dashboard is
                 fi
             od
 
-            result.sort(_order);
+            result.sort(_order)
 
             return result;
         si
 
         read(path: string) -> SESSION? is
-            let text = FILES.read_text(path);
+            let text = FILES.read_text(path)
 
             if string.is_null_or_white_space(text) then
                 return null;
