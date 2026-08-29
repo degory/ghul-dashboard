@@ -1,17 +1,17 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
     // Parses `git worktree list --porcelain`, which emits a paragraph per
     // worktree: a `worktree <path>` line, then attributes, one of which is
     // either `branch refs/heads/<name>` or a bare `detached`.
     class WORKTREE_LIST is
-        detached_branch: string static => "(detached)";
+        detached_branch: string static => "(detached)"
 
         parse(repository: string, text: string?) -> Iterable[WORKTREE] static is
-            let result = LIST[WORKTREE]();
+            let result = LIST[WORKTREE]()
 
-            let path mut = "";
+            let path mut = ""
 
             for line in TEXT.lines(text) do
                 if line.starts_with("worktree ") then

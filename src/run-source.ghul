@@ -1,22 +1,22 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
-    use IO.Path;
+    use IO.Path
 
-    use System.Text.Json.JsonSerializer;
-    use System.Text.Json.JsonSerializerOptions;
+    use System.Text.Json.JsonSerializer
+    use System.Text.Json.JsonSerializerOptions
 
     // Reads the run status files ghul-test publishes, one per test-run process.
     class RUN_SOURCE is
         // The wire format this understands. A file declaring anything else is
         // from a different version of ghul-test and is left alone.
-        supported_version: int static => 1;
+        supported_version: int static => 1
 
-        _directory: string;
-        _options: JsonSerializerOptions;
+        _directory: string
+        _options: JsonSerializerOptions
 
         init(runtime_directory: string?) is
             // With no runtime directory there is nowhere for ghul-test to have
@@ -31,10 +31,10 @@ namespace Dashboard is
         si
 
         collect() -> Iterable[RUN] is
-            let result = LIST[RUN]();
+            let result = LIST[RUN]()
 
             for path in FILES.list(_directory, "*.json") do
-                let run = read(path);
+                let run = read(path)
 
                 if !run? then
                     continue;
@@ -43,8 +43,8 @@ namespace Dashboard is
                 // Abandoned by a killed run: no process, and it never reported
                 // finishing. Nothing else collects these.
                 if !PROCESS_TREE.is_alive(run.pid) /\ !run.is_done then
-                    FILES.delete(path);
-                    FILES.delete(Path.join(_directory, "{run.pid}.events"));
+                    FILES.delete(path)
+                    FILES.delete(Path.join(_directory, "{run.pid}.events"))
                     continue;
                 fi
 
@@ -55,14 +55,14 @@ namespace Dashboard is
         si
 
         read(path: string) -> RUN? is
-            let text = FILES.read_text(path);
+            let text = FILES.read_text(path)
 
             if string.is_null_or_white_space(text) then
                 return null;
             fi
 
             try
-                let run = JsonSerializer.deserialize[RUN](text, _options);
+                let run = JsonSerializer.deserialize[RUN](text, _options)
 
                 if !run? \/ run.version != supported_version then
                     return null;

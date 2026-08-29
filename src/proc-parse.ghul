@@ -1,6 +1,6 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
     // Parsers for the /proc files the dashboard reads. Each takes the file's
     // contents as a string and returns data, so none of them needs a machine to
@@ -10,11 +10,11 @@ namespace Dashboard is
     // needs. The absolute values mean nothing on their own: utilisation is the
     // ratio of their growth between two samples.
     class PROCESSOR_TIMES is
-        busy: long;
-        total: long;
+        busy: long
+        total: long
 
         init(busy: long, total: long) is
-            self.busy = busy;
+            self.busy = busy
             self.total = total;
         si
 
@@ -22,21 +22,21 @@ namespace Dashboard is
         // spent idle or waiting on I/O is not the processor being busy. Returns
         // null for a line that is not a CPU line.
         parse(line: string?) -> PROCESSOR_TIMES? static is
-            let columns = TEXT.words(line) | .collect_list();
+            let columns = TEXT.words(line) | .collect_list()
 
             if columns.count < 5 \/ !columns[0].starts_with("cpu") then
                 return null;
             fi
 
-            let total mut = 0L;
-            let idle mut = 0L;
+            let total mut = 0L
+            let idle mut = 0L
 
-            let index mut = 1;
+            let index mut = 1
 
             while index < columns.count do
-                let value = TEXT.to_long(columns[index]);
+                let value = TEXT.to_long(columns[index])
 
-                total = total + value;
+                total = total + value
 
                 // Columns four and five, counting the label, are idle and
                 // iowait.
@@ -62,19 +62,19 @@ namespace Dashboard is
                 return 0.0D;
             fi
 
-            let elapsed = total - previous.total;
+            let elapsed = total - previous.total
 
             if elapsed <= 0L then
                 return 0.0D;
             fi
 
-            let worked = busy - previous.busy;
+            let worked = busy - previous.busy
 
             if worked <= 0L then
                 return 0.0D;
             fi
 
-            let percent = cast double(worked) * 100.0D / cast double(elapsed);
+            let percent = cast double(worked) * 100.0D / cast double(elapsed)
 
             if percent > 100.0D then
                 return 100.0D;
@@ -85,10 +85,10 @@ namespace Dashboard is
 
         // Every CPU line in /proc/stat: the aggregate first, then one per core.
         parse_all(text: string?) -> Iterable[PROCESSOR_TIMES] static is
-            let result = LIST[PROCESSOR_TIMES]();
+            let result = LIST[PROCESSOR_TIMES]()
 
             for line in TEXT.lines(text) do
-                let times = parse(line);
+                let times = parse(line)
 
                 if times? then
                     result.add(times);
@@ -100,29 +100,29 @@ namespace Dashboard is
     si
 
     class MEMORY_INFO is
-        total_kb: long public;
-        available_kb: long public;
-        swap_total_kb: long public;
-        swap_free_kb: long public;
+        total_kb: long public
+        available_kb: long public
+        swap_total_kb: long public
+        swap_free_kb: long public
 
-        used_kb: long => total_kb - available_kb;
-        swap_used_kb: long => swap_total_kb - swap_free_kb;
+        used_kb: long => total_kb - available_kb
+        swap_used_kb: long => swap_total_kb - swap_free_kb
 
         init() is si
 
         // Lines read `MemTotal:       16364728 kB`, so the value is the second
         // word.
         parse(text: string?) -> MEMORY_INFO static is
-            let result = MEMORY_INFO();
+            let result = MEMORY_INFO()
 
             for line in TEXT.lines(text) do
-                let words = TEXT.words(line) | .collect_list();
+                let words = TEXT.words(line) | .collect_list()
 
                 if words.count < 2 then
                     continue;
                 fi
 
-                let value = TEXT.to_long(words[1]);
+                let value = TEXT.to_long(words[1])
 
                 if words[0] =~ "MemTotal:" then
                     result.total_kb = value;
@@ -142,7 +142,7 @@ namespace Dashboard is
     class LOAD_AVERAGE is
         // The one-minute figure, the first of the five columns.
         parse(text: string?) -> double static is
-            let words = TEXT.words(text) | .collect_list();
+            let words = TEXT.words(text) | .collect_list()
 
             if words.count == 0 then
                 return 0.0D;
@@ -157,13 +157,13 @@ namespace Dashboard is
     // the numeric columns are read from after the *last* closing parenthesis
     // rather than by splitting the whole line.
     class PROCESS_STAT is
-        command: string;
-        parent_pid: int;
-        processor_ticks: long;
+        command: string
+        parent_pid: int
+        processor_ticks: long
 
         init(command: string, parent_pid: int, processor_ticks: long) is
-            self.command = command;
-            self.parent_pid = parent_pid;
+            self.command = command
+            self.parent_pid = parent_pid
             self.processor_ticks = processor_ticks;
         si
 
@@ -172,18 +172,18 @@ namespace Dashboard is
                 return null;
             fi
 
-            let open = text!.index_of('(');
-            let close = text.last_index_of(')');
+            let open = text!.index_of('(')
+            let close = text.last_index_of(')')
 
             if open < 0 \/ close < open then
                 return null;
             fi
 
-            let command = text.substring(open + 1, close - open - 1);
+            let command = text.substring(open + 1, close - open - 1)
 
             // Counting from the column after the command: state, ppid, ...,
             // then utime and stime.
-            let columns = TEXT.words(text.substring(close + 1)) | .collect_list();
+            let columns = TEXT.words(text.substring(close + 1)) | .collect_list()
 
             if columns.count < 13 then
                 return null;

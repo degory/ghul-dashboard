@@ -1,10 +1,10 @@
 namespace Dashboard is
-    use System.Exception;
+    use System.Exception
 
-    use Collections.Iterable;
+    use Collections.Iterable
 
-    use System.Diagnostics.Process;
-    use System.Diagnostics.ProcessStartInfo;
+    use System.Diagnostics.Process
+    use System.Diagnostics.ProcessStartInfo
 
     // Runs a command and captures its output.
     //
@@ -15,15 +15,15 @@ namespace Dashboard is
     // read. The sources cache instead of overlapping, which costs a frame far
     // less than a crash.
     class PROCESS_RUNNER is
-        timeout_ms: int static => 10000;
+        timeout_ms: int static => 10000
 
         // Captures stdout, ignoring the exit status: every caller treats a
         // failed command as "no data", which empty output already expresses.
         run(path: string, arguments: Iterable[string]) -> string static is
             try
-                let start_info = ProcessStartInfo();
+                let start_info = ProcessStartInfo()
 
-                start_info.file_name = path;
+                start_info.file_name = path
 
                 // Arguments go in one at a time rather than as a command line,
                 // so nothing needs quoting or escaping.
@@ -31,21 +31,21 @@ namespace Dashboard is
                     start_info.argument_list.add(argument);
                 od
 
-                start_info.redirect_standard_output = true;
-                start_info.redirect_standard_error = true;
-                start_info.use_shell_execute = false;
+                start_info.redirect_standard_output = true
+                start_info.redirect_standard_error = true
+                start_info.use_shell_execute = false
 
-                let process = Process.start(start_info);
+                let process = Process.start(start_info)
 
                 if !process? then
                     return "";
                 fi
 
-                let output = process.standard_output.read_to_end();
+                let output = process.standard_output.read_to_end()
 
                 // Reading stdout to end means the child has already closed it,
                 // so this reaps an all-but-exited process.
-                process.wait_for_exit(timeout_ms);
+                process.wait_for_exit(timeout_ms)
 
                 return output;
             catch ex: Exception

@@ -11,7 +11,7 @@ namespace Dashboard is
                 return "";
             fi
 
-            let seconds = (now - at) / 1000L;
+            let seconds = (now - at) / 1000L
 
             if seconds < 0L then
                 return "";
@@ -35,7 +35,7 @@ namespace Dashboard is
         si
 
         percent(value: double) -> string static =>
-            "{value.to_string("0")}%".pad_left(4);
+            "{value.to_string("0")}%".pad_left(4)
 
         ratio(numerator: long, denominator: long) -> double static is
             if denominator <= 0L then
@@ -53,15 +53,15 @@ namespace Dashboard is
     // how wide things should be; this guarantees the result fits whether or not
     // that arithmetic was right.
     class LINE_BUILDER is
-        _width: int;
-        _used: int;
-        _text: System.Text.StringBuilder;
+        _width: int
+        _used: int
+        _text: System.Text.StringBuilder
 
-        used: int => _used;
-        remaining: int => _width - _used;
+        used: int => _used
+        remaining: int => _width - _used
 
         init(width: int) is
-            _width = width;
+            _width = width
             _text = System.Text.StringBuilder();
         si
 
@@ -72,9 +72,9 @@ namespace Dashboard is
                 return false;
             fi
 
-            _text.append(text);
+            _text.append(text)
 
-            _used = _used + visible_width;
+            _used = _used + visible_width
 
             return true;
         si
@@ -89,39 +89,39 @@ namespace Dashboard is
     // rather than two and a short bar still shows movement: at twelve columns a
     // plain full-or-empty bar changes only every eight percent.
     class METER is
-        steps_per_column: int static => 8;
+        steps_per_column: int static => 8
 
         // U+2588 down to U+258F: full block, then seven-eighths through
         // one-eighth. Index by eighths, so partial_blocks[1] is one eighth.
-        partial_blocks: string static => " ▏▎▍▌▋▊▉";
+        partial_blocks: string static => " ▏▎▍▌▋▊▉"
 
-        filled_character: char static => '█';
-        empty_character: char static => '·';
+        filled_character: char static => '█'
+        empty_character: char static => '·'
 
         // U+2581 to U+2588: one-eighth height through full, for a column that
         // stands in for one core.
-        column_blocks: string static => "▁▂▃▄▅▆▇█";
+        column_blocks: string static => "▁▂▃▄▅▆▇█"
 
         // Bands the meters are coloured by, and that the per-core cells stand
         // in for.
-        busy_percent: double static => 80.0D;
-        working_percent: double static => 50.0D;
-        active_percent: double static => 20.0D;
+        busy_percent: double static => 80.0D
+        working_percent: double static => 50.0D
+        active_percent: double static => 20.0D
 
         bar(percent: double, width: int) -> string static is
-            let steps = get_steps(percent, width);
+            let steps = get_steps(percent, width)
 
-            let full = steps / steps_per_column;
-            let remainder = steps % steps_per_column;
+            let full = steps / steps_per_column
+            let remainder = steps % steps_per_column
 
-            let result = System.Text.StringBuilder();
+            let result = System.Text.StringBuilder()
 
-            result.append("".pad_right(full, filled_character));
+            result.append("".pad_right(full, filled_character))
 
             // The partial column only exists when the bar does not land on a
             // column boundary, and it takes one of the columns still to fill.
             if remainder > 0 /\ full < width then
-                result.append(partial_blocks.substring(remainder, 1));
+                result.append(partial_blocks.substring(remainder, 1))
                 result.append("".pad_right(width - full - 1, empty_character));
             else
                 result.append("".pad_right(width - full, empty_character));
@@ -132,13 +132,13 @@ namespace Dashboard is
 
         // Total eighths to fill, clamped to the bar.
         get_steps(percent: double, width: int) -> int static is
-            let steps mut = cast int(percent * cast double(width * steps_per_column) / 100.0D);
+            let steps mut = cast int(percent * cast double(width * steps_per_column) / 100.0D)
 
             if steps < 0 then
                 return 0;
             fi
 
-            let maximum = width * steps_per_column;
+            let maximum = width * steps_per_column
 
             if steps > maximum then
                 return maximum;
@@ -148,7 +148,7 @@ namespace Dashboard is
         si
 
         painted_bar(percent: double, width: int) -> string static =>
-            paint(bar(percent, width), percent);
+            paint(bar(percent, width), percent)
 
         paint(text: string, percent: double) -> string static is
             if percent >= busy_percent then
@@ -164,10 +164,10 @@ namespace Dashboard is
         // its colour the band, so a row of them reads as a profile rather than
         // as a number.
         core_cell(percent: double) -> string static =>
-            paint(core_glyph(percent), percent);
+            paint(core_glyph(percent), percent)
 
         core_glyph(percent: double) -> string static is
-            let level mut = cast int(percent * cast double(column_blocks.length) / 100.0D);
+            let level mut = cast int(percent * cast double(column_blocks.length) / 100.0D)
 
             if level < 0 then
                 level = 0;

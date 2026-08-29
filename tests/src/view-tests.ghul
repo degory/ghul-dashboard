@@ -1,64 +1,64 @@
 namespace Tests is
-    use Collections.MutableList;
-    use Collections.LIST;
+    use Collections.MutableList
+    use Collections.LIST
 
-    use Dashboard;
-    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute;
-    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute;
+    use Dashboard
+    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute
+    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute
 
     @TestClass()
     class VIEW_TESTS is
         init() is si
 
         session(pid: int, updated_at: long) -> SESSION static is
-            let result = SESSION();
+            let result = SESSION()
 
-            result.pid = pid;
-            result.status_updated_at = updated_at;
-            result.status = "idle";
-            result.name = "session-{pid}";
+            result.pid = pid
+            result.status_updated_at = updated_at
+            result.status = "idle"
+            result.name = "session-{pid}"
 
             return result;
         si
 
         three_sessions() -> MutableList[SESSION] static is
-            let result = LIST[SESSION]();
+            let result = LIST[SESSION]()
 
-            result.add(session(100, 3000L));
-            result.add(session(200, 2000L));
-            result.add(session(300, 1000L));
+            result.add(session(100, 3000L))
+            result.add(session(200, 2000L))
+            result.add(session(300, 1000L))
 
             return result;
         si
 
         @Test()
         view__move__steps_down_the_list() is
-            let sessions = three_sessions();
+            let sessions = three_sessions()
 
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 100;
+            view.selected_pid = 100
 
-            view.move(sessions, 1);
+            view.move(sessions, 1)
 
             are_equal(200, view.selected_pid);
         si
 
         @Test()
         view__move__clamps_at_both_ends() is
-            let sessions = three_sessions();
+            let sessions = three_sessions()
 
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 100;
+            view.selected_pid = 100
 
-            view.move(sessions, -1);
+            view.move(sessions, -1)
 
-            are_equal(100, view.selected_pid);
+            are_equal(100, view.selected_pid)
 
-            view.selected_pid = 300;
+            view.selected_pid = 300
 
-            view.move(sessions, 1);
+            view.move(sessions, 1)
 
             are_equal(300, view.selected_pid);
         si
@@ -67,63 +67,63 @@ namespace Tests is
         // row index is what stops the selection landing on a different session.
         @Test()
         view__get_selected__follows_a_session_through_a_reorder() is
-            let sessions = three_sessions();
+            let sessions = three_sessions()
 
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 300;
+            view.selected_pid = 300
 
-            let reordered = LIST[SESSION]();
+            let reordered = LIST[SESSION]()
 
-            reordered.add(sessions[2]);
-            reordered.add(sessions[0]);
-            reordered.add(sessions[1]);
+            reordered.add(sessions[2])
+            reordered.add(sessions[0])
+            reordered.add(sessions[1])
 
-            are_equal(300, view.get_selected(reordered)!.pid);
+            are_equal(300, view.get_selected(reordered)!.pid)
             are_equal(0, view.get_selected_index(reordered));
         si
 
         // The selected session exited between frames.
         @Test()
         view__move__given_a_selection_that_has_vanished__lands_on_the_first_row() is
-            let sessions = three_sessions();
+            let sessions = three_sessions()
 
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 999;
+            view.selected_pid = 999
 
-            view.move(sessions, 1);
+            view.move(sessions, 1)
 
             are_equal(100, view.selected_pid);
         si
 
         @Test()
         view__get_selected_index__given_a_selection_that_has_vanished__is_negative() is
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 999;
+            view.selected_pid = 999
 
             are_equal(-1, view.get_selected_index(three_sessions()));
         si
 
         @Test()
         view__move__given_no_sessions__clears_the_selection() is
-            let view = VIEW();
+            let view = VIEW()
 
-            view.selected_pid = 100;
+            view.selected_pid = 100
 
-            view.move(LIST[SESSION](), 1);
+            view.move(LIST[SESSION](), 1)
 
             are_equal(0, view.selected_pid);
         si
 
         @Test()
         view__clear_pending_kill__forgets_an_armed_confirmation() is
-            let view = VIEW();
+            let view = VIEW()
 
-            view.pending_kill_pid = 100;
+            view.pending_kill_pid = 100
 
-            view.clear_pending_kill();
+            view.clear_pending_kill()
 
             are_equal(0, view.pending_kill_pid);
         si
@@ -134,19 +134,19 @@ namespace Tests is
         init() is si
 
         session(pid: int, updated_at: long) -> SESSION static is
-            let result = SESSION();
+            let result = SESSION()
 
-            result.pid = pid;
-            result.status_updated_at = updated_at;
+            result.pid = pid
+            result.status_updated_at = updated_at
 
             return result;
         si
 
         @Test()
         most_recently_active__compare__orders_the_more_recent_session_first() is
-            let order = MOST_RECENTLY_ACTIVE();
+            let order = MOST_RECENTLY_ACTIVE()
 
-            is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0);
+            is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0)
             is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0);
         si
 
@@ -154,24 +154,24 @@ namespace Tests is
         // and moving under the selection.
         @Test()
         most_recently_active__compare__breaks_ties_by_pid() is
-            let order = MOST_RECENTLY_ACTIVE();
+            let order = MOST_RECENTLY_ACTIVE()
 
-            is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0);
+            is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0)
             are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
         si
 
         @Test()
         most_recently_active__sort__puts_the_most_recently_active_at_the_top() is
-            let sessions = LIST[SESSION]();
+            let sessions = LIST[SESSION]()
 
-            sessions.add(session(1, 1000L));
-            sessions.add(session(2, 3000L));
-            sessions.add(session(3, 2000L));
+            sessions.add(session(1, 1000L))
+            sessions.add(session(2, 3000L))
+            sessions.add(session(3, 2000L))
 
-            sessions.sort(MOST_RECENTLY_ACTIVE());
+            sessions.sort(MOST_RECENTLY_ACTIVE())
 
-            are_equal(2, sessions[0].pid);
-            are_equal(3, sessions[1].pid);
+            are_equal(2, sessions[0].pid)
+            are_equal(3, sessions[1].pid)
             are_equal(1, sessions[2].pid);
         si
     si

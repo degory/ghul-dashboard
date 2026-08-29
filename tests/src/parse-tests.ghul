@@ -1,31 +1,31 @@
 namespace Tests is
-    use Dashboard;
-    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute;
-    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute;
+    use Dashboard
+    use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute
+    use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute
 
     @TestClass()
     class WORKTREE_LIST_TESTS is
         init() is si
 
         porcelain: string static =>
-            "worktree /w/ghul\nHEAD abc123\nbranch refs/heads/main\n\nworktree /w/worktrees/ghul/fix\nHEAD def456\nbranch refs/heads/claude/fix\n";
+            "worktree /w/ghul\nHEAD abc123\nbranch refs/heads/main\n\nworktree /w/worktrees/ghul/fix\nHEAD def456\nbranch refs/heads/claude/fix\n"
 
         @Test()
         worktree_list__parse__reads_a_worktree_per_paragraph() is
-            let worktrees = WORKTREE_LIST.parse("ghul", porcelain) | .collect_list();
+            let worktrees = WORKTREE_LIST.parse("ghul", porcelain) | .collect_list()
 
-            are_equal(2, worktrees.count);
-            are_equal("/w/ghul", worktrees[0].path);
-            are_equal("main", worktrees[0].branch);
+            are_equal(2, worktrees.count)
+            are_equal("/w/ghul", worktrees[0].path)
+            are_equal("main", worktrees[0].branch)
             are_equal("claude/fix", worktrees[1].branch);
         si
 
         @Test()
         worktree_list__parse__given_a_detached_worktree__names_it_as_detached() is
             let worktrees =
-                WORKTREE_LIST.parse("ghul", "worktree /w/x\nHEAD abc123\ndetached\n") | .collect_list();
+                WORKTREE_LIST.parse("ghul", "worktree /w/x\nHEAD abc123\ndetached\n") | .collect_list()
 
-            are_equal(1, worktrees.count);
+            are_equal(1, worktrees.count)
             are_equal(WORKTREE_LIST.detached_branch, worktrees[0].branch);
         si
 
@@ -52,17 +52,17 @@ namespace Tests is
         init() is si
 
         rows: string static =>
-            "1771\tclaude/docs\tghul\tAPPROVED\tSUCCESS\n136\tclaude/progress\tghul-test\tNONE\tPENDING\n";
+            "1771\tclaude/docs\tghul\tAPPROVED\tSUCCESS\n136\tclaude/progress\tghul-test\tNONE\tPENDING\n"
 
         @Test()
         pull_request_rows__parse__reads_a_pull_request_per_row() is
-            let pull_requests = PULL_REQUEST_ROWS.parse(rows) | .collect_list();
+            let pull_requests = PULL_REQUEST_ROWS.parse(rows) | .collect_list()
 
-            are_equal(2, pull_requests.count);
-            are_equal(1771, pull_requests[0].number);
-            are_equal("claude/docs", pull_requests[0].branch);
-            are_equal("ghul", pull_requests[0].repository);
-            are_equal("APPROVED", pull_requests[0].review);
+            are_equal(2, pull_requests.count)
+            are_equal(1771, pull_requests[0].number)
+            are_equal("claude/docs", pull_requests[0].branch)
+            are_equal("ghul", pull_requests[0].repository)
+            are_equal("APPROVED", pull_requests[0].review)
             are_equal("SUCCESS", pull_requests[0].checks);
         si
 
@@ -72,9 +72,9 @@ namespace Tests is
         pull_request_rows__parse__keeps_only_claude_branches() is
             let pull_requests =
                 PULL_REQUEST_ROWS.parse("1\tmain\tghul\tNONE\tSUCCESS\n2\tclaude/x\tghul\tNONE\tSUCCESS\n")
-                    | .collect_list();
+                    | .collect_list()
 
-            are_equal(1, pull_requests.count);
+            are_equal(1, pull_requests.count)
             are_equal(2, pull_requests[0].number);
         si
 
@@ -92,8 +92,8 @@ namespace Tests is
 
         @Test()
         pull_request__is_bad__holds_for_a_failed_check_or_requested_changes() is
-            is_true(PULL_REQUEST(1, "claude/x", "ghul", "NONE", "FAILURE").is_bad);
-            is_true(PULL_REQUEST(1, "claude/x", "ghul", "CHANGES_REQUESTED", "SUCCESS").is_bad);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "NONE", "FAILURE").is_bad)
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "CHANGES_REQUESTED", "SUCCESS").is_bad)
             is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_bad);
         si
 
@@ -101,8 +101,8 @@ namespace Tests is
         // read as a failure.
         @Test()
         pull_request__is_good__holds_for_approved_with_passing_or_absent_checks() is
-            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_good);
-            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "NONE").is_good);
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "SUCCESS").is_good)
+            is_true(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "NONE").is_good)
             is_false(PULL_REQUEST(1, "claude/x", "ghul", "APPROVED", "PENDING").is_good);
         si
     si
@@ -113,19 +113,19 @@ namespace Tests is
 
         @Test()
         text__lines__drops_blank_lines_and_carriage_returns() is
-            let lines = TEXT.lines("one\r\n\ntwo\n\n") | .collect_list();
+            let lines = TEXT.lines("one\r\n\ntwo\n\n") | .collect_list()
 
-            are_equal(2, lines.count);
-            are_equal("one", lines[0]);
+            are_equal(2, lines.count)
+            are_equal("one", lines[0])
             are_equal("two", lines[1]);
         si
 
         @Test()
         text__words__collapses_runs_of_spaces() is
-            let words = TEXT.words("  a   b\tc ") | .collect_list();
+            let words = TEXT.words("  a   b\tc ") | .collect_list()
 
-            are_equal(3, words.count);
-            are_equal("a", words[0]);
+            are_equal(3, words.count)
+            are_equal("a", words[0])
             are_equal("c", words[2]);
         si
 
@@ -133,8 +133,8 @@ namespace Tests is
         // not worth a crash.
         @Test()
         text__to_long__given_input_that_is_not_a_number__is_zero() is
-            are_equal(0L, TEXT.to_long("banana"));
-            are_equal(0L, TEXT.to_long(null));
+            are_equal(0L, TEXT.to_long("banana"))
+            are_equal(0L, TEXT.to_long(null))
             are_equal(42L, TEXT.to_long("42"));
         si
     si

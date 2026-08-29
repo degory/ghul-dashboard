@@ -6,39 +6,39 @@ namespace Dashboard is
     // rather than overlapping the local reads: a dashboard that survives a
     // failing `gh` is worth more than one that shaves a frame.
     class COLLECTOR is
-        _sessions: SESSION_SOURCE;
-        _runs: RUN_SOURCE;
-        _worktrees: WORKTREE_SOURCE;
-        _pull_requests: PULL_REQUEST_SOURCE;
-        _system: SYSTEM_SOURCE;
-        _locations: SESSION_LOCATIONS;
+        _sessions: SESSION_SOURCE
+        _runs: RUN_SOURCE
+        _worktrees: WORKTREE_SOURCE
+        _pull_requests: PULL_REQUEST_SOURCE
+        _system: SYSTEM_SOURCE
+        _locations: SESSION_LOCATIONS
 
         init(workspace: string) is
-            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE);
+            let home = System.Environment.get_folder_path(System.Environment_SpecialFolder.USER_PROFILE)
 
-            _sessions = SESSION_SOURCE(home);
-            _runs = RUN_SOURCE(System.Environment.get_environment_variable("XDG_RUNTIME_DIR"));
-            _worktrees = WORKTREE_SOURCE(workspace);
-            _pull_requests = PULL_REQUEST_SOURCE(_worktrees);
-            _system = SYSTEM_SOURCE();
+            _sessions = SESSION_SOURCE(home)
+            _runs = RUN_SOURCE(System.Environment.get_environment_variable("XDG_RUNTIME_DIR"))
+            _worktrees = WORKTREE_SOURCE(workspace)
+            _pull_requests = PULL_REQUEST_SOURCE(_worktrees)
+            _system = SYSTEM_SOURCE()
             _locations = SESSION_LOCATIONS(workspace, home);
         si
 
         collect() -> SNAPSHOT is
-            let at = now();
+            let at = now()
 
-            let worktrees = _worktrees.collect(at);
-            let pull_requests = _pull_requests.collect(at);
+            let worktrees = _worktrees.collect(at)
+            let pull_requests = _pull_requests.collect(at)
 
-            let runs = _runs.collect();
-            let sessions = _sessions.collect();
+            let runs = _runs.collect()
+            let sessions = _sessions.collect()
 
-            _locations.attribute_from_runs(sessions, runs, worktrees);
+            _locations.attribute_from_runs(sessions, runs, worktrees)
 
-            let snapshot = SNAPSHOT(sessions, runs, worktrees, pull_requests);
+            let snapshot = SNAPSHOT(sessions, runs, worktrees, pull_requests)
 
-            snapshot.pull_requests_fetched_at = _pull_requests.fetched_at;
-            snapshot.system = _system.sample();
+            snapshot.pull_requests_fetched_at = _pull_requests.fetched_at
+            snapshot.system = _system.sample()
 
             return snapshot;
         si

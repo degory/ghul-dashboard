@@ -1,6 +1,6 @@
 namespace Dashboard is
-    use Collections.Iterable;
-    use Collections.LIST;
+    use Collections.Iterable
+    use Collections.LIST
 
     // Parses the tab-separated rows `gh api graphql --jq` produces, one per
     // pull request: number, branch, repository, review decision, checks state.
@@ -8,15 +8,15 @@ namespace Dashboard is
     // Only `claude/*` branches are kept. The dashboard exists to watch this
     // session's work, and a human's own branches are not that.
     class PULL_REQUEST_ROWS is
-        branch_prefix: string static => "claude/";
+        branch_prefix: string static => "claude/"
 
-        expected_columns: int static => 5;
+        expected_columns: int static => 5
 
         parse(text: string?) -> Iterable[PULL_REQUEST] static is
-            let result = LIST[PULL_REQUEST]();
+            let result = LIST[PULL_REQUEST]()
 
             for line in TEXT.lines(text) do
-                let columns = line.split(['\t']);
+                let columns = line.split(['\t'])
 
                 // A short row is a truncated or unexpected response, not a
                 // pull request with missing fields.
