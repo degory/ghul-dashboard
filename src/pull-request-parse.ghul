@@ -21,11 +21,11 @@ namespace Dashboard is
                 // A short row is a truncated or unexpected response, not a
                 // pull request with missing fields.
                 if columns.count < expected_columns then
-                    continue;
+                    continue
                 fi
 
                 if !columns[1].starts_with(branch_prefix) then
-                    continue;
+                    continue
                 fi
 
                 result.add(
@@ -36,10 +36,10 @@ namespace Dashboard is
                         columns[3],
                         columns[4]
                     )
-                );
+                )
             od
 
-            return result;
+            return result
         si
     si
 si

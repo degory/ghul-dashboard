@@ -22,12 +22,12 @@ namespace Dashboard is
             // With no runtime directory there is nowhere for ghul-test to have
             // published anything, and the empty path finds no runs.
             if string.is_null_or_white_space(runtime_directory) then
-                _directory = "";
+                _directory = ""
             else
-                _directory = Path.join(runtime_directory!, "ghul-test");
+                _directory = Path.join(runtime_directory!, "ghul-test")
             fi
 
-            _options = JsonSerializerOptions();
+            _options = JsonSerializerOptions()
         si
 
         collect() -> Iterable[RUN] is
@@ -37,7 +37,7 @@ namespace Dashboard is
                 let run = read(path)
 
                 if !run? then
-                    continue;
+                    continue
                 fi
 
                 // Abandoned by a killed run: no process, and it never reported
@@ -45,32 +45,32 @@ namespace Dashboard is
                 if !PROCESS_TREE.is_alive(run.pid) /\ !run.is_done then
                     FILES.delete(path)
                     FILES.delete(Path.join(_directory, "{run.pid}.events"))
-                    continue;
+                    continue
                 fi
 
-                result.add(run);
+                result.add(run)
             od
 
-            return result;
+            return result
         si
 
         read(path: string) -> RUN? is
             let text = FILES.read_text(path)
 
             if string.is_null_or_white_space(text) then
-                return null;
+                return null
             fi
 
             try
                 let run = JsonSerializer.deserialize[RUN](text, _options)
 
                 if !run? \/ run.version != supported_version then
-                    return null;
+                    return null
                 fi
 
-                return run;
+                return run
             catch ex: Exception
-                return null;
+                return null
             yrt
         si
     si

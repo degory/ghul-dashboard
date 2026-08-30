@@ -8,30 +8,30 @@ namespace Dashboard is
         // means "never", which reads better as nothing than as a number.
         age(at: long, now: long) -> string static is
             if at <= 0L then
-                return "";
+                return ""
             fi
 
             let seconds = (now - at) / 1000L
 
             if seconds < 0L then
-                return "";
+                return ""
             elif seconds < 60L then
-                return "{seconds}s";
+                return "{seconds}s"
             elif seconds < 3600L then
-                return "{seconds / 60L}m";
+                return "{seconds / 60L}m"
             fi
 
-            return "{seconds / 3600L}h";
+            return "{seconds / 3600L}h"
         si
 
         size(kilobytes: long) -> string static is
             if kilobytes >= 1048576L then
-                return "{(cast double(kilobytes) / 1048576.0D).to_string("0.0")}G";
+                return "{(cast double(kilobytes) / 1048576.0D).to_string("0.0")}G"
             elif kilobytes >= 1024L then
-                return "{(cast double(kilobytes) / 1024.0D).to_string("0")}M";
+                return "{(cast double(kilobytes) / 1024.0D).to_string("0")}M"
             fi
 
-            return "{kilobytes}K";
+            return "{kilobytes}K"
         si
 
         percent(value: double) -> string static =>
@@ -39,10 +39,10 @@ namespace Dashboard is
 
         ratio(numerator: long, denominator: long) -> double static is
             if denominator <= 0L then
-                return 0.0D;
+                return 0.0D
             fi
 
-            return cast double(numerator) * 100.0D / cast double(denominator);
+            return cast double(numerator) * 100.0D / cast double(denominator)
         si
     si
 
@@ -62,24 +62,24 @@ namespace Dashboard is
 
         init(width: int) is
             _width = width
-            _text = System.Text.StringBuilder();
+            _text = System.Text.StringBuilder()
         si
 
         // Returns whether the segment was added, so a caller can tell what the
         // line ended up carrying.
         try_append(visible_width: int, text: string) -> bool is
             if _used + visible_width > _width then
-                return false;
+                return false
             fi
 
             _text.append(text)
 
             _used = _used + visible_width
 
-            return true;
+            return true
         si
 
-        to_string() -> string => _text.to_string();
+        to_string() -> string => _text.to_string()
     si
 
     // The one bar builder. Both the load meters and the test-run progress bars
@@ -122,12 +122,12 @@ namespace Dashboard is
             // column boundary, and it takes one of the columns still to fill.
             if remainder > 0 /\ full < width then
                 result.append(partial_blocks.substring(remainder, 1))
-                result.append("".pad_right(width - full - 1, empty_character));
+                result.append("".pad_right(width - full - 1, empty_character))
             else
-                result.append("".pad_right(width - full, empty_character));
+                result.append("".pad_right(width - full, empty_character))
             fi
 
-            return result.to_string();
+            return result.to_string()
         si
 
         // Total eighths to fill, clamped to the bar.
@@ -135,16 +135,16 @@ namespace Dashboard is
             let steps mut = cast int(percent * cast double(width * steps_per_column) / 100.0D)
 
             if steps < 0 then
-                return 0;
+                return 0
             fi
 
             let maximum = width * steps_per_column
 
             if steps > maximum then
-                return maximum;
+                return maximum
             fi
 
-            return steps;
+            return steps
         si
 
         painted_bar(percent: double, width: int) -> string static =>
@@ -152,12 +152,12 @@ namespace Dashboard is
 
         paint(text: string, percent: double) -> string static is
             if percent >= busy_percent then
-                return SCREEN.red(text);
+                return SCREEN.red(text)
             elif percent >= working_percent then
-                return SCREEN.yellow(text);
+                return SCREEN.yellow(text)
             fi
 
-            return SCREEN.green(text);
+            return SCREEN.green(text)
         si
 
         // One column standing in for a core: its height carries the load and
@@ -170,12 +170,12 @@ namespace Dashboard is
             let level mut = cast int(percent * cast double(column_blocks.length) / 100.0D)
 
             if level < 0 then
-                level = 0;
+                level = 0
             elif level >= column_blocks.length then
-                level = column_blocks.length - 1;
+                level = column_blocks.length - 1
             fi
 
-            return column_blocks.substring(level, 1);
+            return column_blocks.substring(level, 1)
         si
     si
 si

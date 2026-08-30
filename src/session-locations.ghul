@@ -25,7 +25,7 @@ namespace Dashboard is
 
         init(workspace: string, home: string) is
             _workspace = workspace
-            _projects_directory = Path.join(home, ".claude", "projects");
+            _projects_directory = Path.join(home, ".claude", "projects")
         si
 
         // Pins what can be pinned from the running test processes. Cheap: no
@@ -38,7 +38,7 @@ namespace Dashboard is
             let pids = SET[int]()
 
             for session in sessions do
-                pids.add(session.pid);
+                pids.add(session.pid)
             od
 
             let owners = MAP[int,string]()
@@ -47,13 +47,13 @@ namespace Dashboard is
                 let owner = PROCESS_TREE.find_ancestor(run.pid, pids)
 
                 if owner > 0 then
-                    owners[owner] = run.cwd;
+                    owners[owner] = run.cwd
                 fi
             od
 
             for session in sessions do
                 if owners.contains_key(session.pid) then
-                    session.where = describe(owners[session.pid], worktrees);
+                    session.where = describe(owners[session.pid], worktrees)
                 fi
             od
         si
@@ -63,20 +63,20 @@ namespace Dashboard is
         attribute_from_transcripts(sessions: Iterable[SESSION], worktrees: Iterable[WORKTREE]) is
             for session in sessions do
                 if session.where? then
-                    continue;
+                    continue
                 fi
 
                 let directory = read_last_directory(session)
 
                 if directory? then
-                    session.where = describe(directory, worktrees);
+                    session.where = describe(directory, worktrees)
                 fi
             od
         si
 
         read_last_directory(session: SESSION) -> string? is
             if !session.cwd? \/ !session.session_id? then
-                return null;
+                return null
             fi
 
             // Transcripts live in a directory named for the session's own
@@ -86,10 +86,10 @@ namespace Dashboard is
             let path = Path.join(_projects_directory, project, "{session.session_id}.jsonl")
 
             if !File.exists(path) then
-                return null;
+                return null
             fi
 
-            return find_last_directory(FILES.read_tail(path, transcript_tail_bytes));
+            return find_last_directory(FILES.read_tail(path, transcript_tail_bytes))
         si
 
         // Each transcript entry carries the directory it ran in. The last one
@@ -100,17 +100,17 @@ namespace Dashboard is
             let at = tail.last_index_of(marker)
 
             if at < 0 then
-                return null;
+                return null
             fi
 
             let from = at + marker.length
             let to = tail.index_of('"', from)
 
             if to < 0 then
-                return null;
+                return null
             fi
 
-            return tail.substring(from, to - from);
+            return tail.substring(from, to - from)
         si
 
         // Names a directory as briefly as it can be named unambiguously: a
@@ -119,19 +119,19 @@ namespace Dashboard is
         describe(path: string, worktrees: Iterable[WORKTREE]) -> string is
             for worktree in worktrees do
                 if path =~ worktree.path \/ path.starts_with("{worktree.path}/") then
-                    return worktree.label;
+                    return worktree.label
                 fi
             od
 
             if path.starts_with("{_workspace}/") then
-                return path.substring(_workspace.length + 1);
+                return path.substring(_workspace.length + 1)
             fi
 
             if path =~ _workspace then
-                return ".";
+                return "."
             fi
 
-            return path;
+            return path
         si
     si
 si

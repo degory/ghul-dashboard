@@ -22,7 +22,7 @@ namespace Dashboard is
             _width = view.width
 
             if _width < minimum_width then
-                _width = minimum_width;
+                _width = minimum_width
             fi
         si
 
@@ -43,7 +43,7 @@ namespace Dashboard is
             render_pull_requests(lines, snapshot, pull_requests, pull_request_rows)
             render_footer(lines)
 
-            return lines;
+            return lines
         si
 
         // Two rows per run — its heading and its bar — plus its in-flight tests.
@@ -51,14 +51,14 @@ namespace Dashboard is
             let rows mut = 0
 
             for run in runs do
-                rows = rows + 2 + LAYOUT.get_capped(run.running| .count(), LAYOUT.maximum_in_flight_rows);
+                rows = rows + 2 + LAYOUT.get_capped(run.running| .count(), LAYOUT.maximum_in_flight_rows)
             od
 
             if rows == 0 then
-                return 1;
+                return 1
             fi
 
-            return rows;
+            return rows
         si
 
         render_header(lines: MutableList[string], system: SYSTEM?) is
@@ -67,7 +67,7 @@ namespace Dashboard is
             if !system? then
                 lines.add("{SCREEN.bold("ghul")} {clock}")
                 lines.add("")
-                return;
+                return
             fi
 
             let meter = LAYOUT.get_meter_width(_width)
@@ -96,7 +96,7 @@ namespace Dashboard is
 
             lines.add(line.to_string())
 
-            lines.add(render_cores_and_busiest(system));
+            lines.add(render_cores_and_busiest(system))
         si
 
         // A labelled meter and its percentage. With no room for a bar the
@@ -108,13 +108,13 @@ namespace Dashboard is
                     "  {label} {METER.painted_bar(percent, meter)} {FORMAT.percent(percent)}"
                 )
 
-                return;
+                return
             fi
 
             line.try_append(
                 LAYOUT.header_label_width + LAYOUT.header_percent_width,
                 "  {label} {METER.paint(FORMAT.percent(percent), percent)}"
-            );
+            )
         si
 
         // Per-core cells give away a single pegged core that an average hides;
@@ -123,33 +123,33 @@ namespace Dashboard is
             let cores = System.Text.StringBuilder()
 
             for percent in system.core_percents do
-                cores.append(METER.core_cell(percent));
+                cores.append(METER.core_cell(percent))
             od
 
             let busiest = System.Text.StringBuilder()
 
             for load in system.top do
                 if busiest.length > 0 then
-                    busiest.append("  ");
+                    busiest.append("  ")
                 fi
 
-                busiest.append("{load.name} {load.processor_percent.to_string("0")}%");
+                busiest.append("{load.name} {load.processor_percent.to_string("0")}%")
             od
 
             if system.swap_used_kb > 0L then
-                busiest.append("  swap {FORMAT.size(system.swap_used_kb)}");
+                busiest.append("  swap {FORMAT.size(system.swap_used_kb)}")
             fi
 
             let detail = SCREEN.clip(busiest.to_string(), _width - system.core_percents.count - 8)
 
-            return "  {SCREEN.dim("[")}{cores.to_string()}{SCREEN.dim("]")}  {SCREEN.dim(detail)}";
+            return "  {SCREEN.dim("[")}{cores.to_string()}{SCREEN.dim("]")}  {SCREEN.dim(detail)}"
         si
 
         heading(lines: MutableList[string], text: string, detail: string?) is
             if detail? then
-                lines.add("{SCREEN.bold(text)} {SCREEN.dim(detail)}");
+                lines.add("{SCREEN.bold(text)} {SCREEN.dim(detail)}")
             else
-                lines.add(SCREEN.bold(text));
+                lines.add(SCREEN.bold(text))
             fi
         si
 
@@ -158,7 +158,7 @@ namespace Dashboard is
 
             if sessions.count == 0 then
                 lines.add("  {SCREEN.dim("none")}")
-                return;
+                return
             fi
 
             // The window follows the selection, so it can never scroll out of
@@ -168,7 +168,7 @@ namespace Dashboard is
             let first mut = 0
 
             if selected >= rows then
-                first = selected - rows + 1;
+                first = selected - rows + 1
             fi
 
             let index mut = first
@@ -178,23 +178,23 @@ namespace Dashboard is
                 lines.add(format_session(sessions[index], index == selected))
 
                 index = index + 1
-                shown = shown + 1;
+                shown = shown + 1
             od
 
-            add_overflow(lines, sessions.count - index);
+            add_overflow(lines, sessions.count - index)
         si
 
         get_overflow_detail(count: int, rows: int, noun: string) -> string? static is
             if count > rows then
-                return "{count} {noun}";
+                return "{count} {noun}"
             fi
 
-            return null;
+            return null
         si
 
         add_overflow(lines: MutableList[string], remaining: int) static is
             if remaining > 0 then
-                lines.add("  {SCREEN.dim("+{remaining} more")}");
+                lines.add("  {SCREEN.dim("+{remaining} more")}")
             fi
         si
 
@@ -212,7 +212,7 @@ namespace Dashboard is
             let status = SCREEN.pad(session.status, LAYOUT.session_status_width)
 
             if selected then
-                return SCREEN.reverse(SCREEN.pad("> {name} {kind} {status} {where} {age}", _width));
+                return SCREEN.reverse(SCREEN.pad("> {name} {kind} {status} {where} {age}", _width))
             fi
 
             let marker mut = SCREEN.dim("-")
@@ -220,20 +220,20 @@ namespace Dashboard is
 
             if session.status? /\ session.status =~ "busy" then
                 marker = SCREEN.yellow("*")
-                painted_status = SCREEN.yellow(status);
+                painted_status = SCREEN.yellow(status)
             elif session.status? /\ session.status =~ "shell" then
                 marker = SCREEN.cyan("*")
-                painted_status = SCREEN.cyan(status);
+                painted_status = SCREEN.cyan(status)
             fi
 
             let painted_where =
                 if session.where? then
-                    SCREEN.blue(where);
+                    SCREEN.blue(where)
                 else
-                    SCREEN.dim(where);
+                    SCREEN.dim(where)
                 fi
 
-            return "{marker} {name} {SCREEN.dim(kind)} {painted_status} {painted_where} {SCREEN.dim(age)}";
+            return "{marker} {name} {SCREEN.dim(kind)} {painted_status} {painted_where} {SCREEN.dim(age)}"
         si
 
         render_runs(lines: MutableList[string], runs: MutableList[RUN], snapshot: SNAPSHOT) is
@@ -243,7 +243,7 @@ namespace Dashboard is
 
             if runs.count == 0 then
                 lines.add("  {SCREEN.dim("none in progress")}")
-                return;
+                return
             fi
 
             for run in runs do
@@ -257,7 +257,7 @@ namespace Dashboard is
                 lines.add("    {format_run_bar(run)}")
 
                 for test in run.running | .take(LAYOUT.maximum_in_flight_rows) do
-                    lines.add("      {SCREEN.dim(SCREEN.clip(test, _width - 6))}");
+                    lines.add("      {SCREEN.dim(SCREEN.clip(test, _width - 6))}")
                 od
             od
         si
@@ -265,11 +265,11 @@ namespace Dashboard is
         describe_run_location(run: RUN, snapshot: SNAPSHOT) -> string static is
             for worktree in snapshot.worktrees do
                 if run.cwd =~ worktree.path then
-                    return worktree.label;
+                    return worktree.label
                 fi
             od
 
-            return FILES.name_of(run.cwd);
+            return FILES.name_of(run.cwd)
         si
 
         format_run_bar(run: RUN) -> string is
@@ -281,11 +281,11 @@ namespace Dashboard is
 
             let painted =
                 if run.failed > 0 then
-                    SCREEN.red(body);
+                    SCREEN.red(body)
                 elif run.is_done then
-                    SCREEN.green(body);
+                    SCREEN.green(body)
                 else
-                    SCREEN.yellow(body);
+                    SCREEN.yellow(body)
                 fi
 
             let detail = System.Text.StringBuilder()
@@ -293,18 +293,18 @@ namespace Dashboard is
             detail.append("  {SCREEN.green("pass {run.passed}")}")
 
             if run.failed > 0 then
-                detail.append("  {SCREEN.red("fail {run.failed}")}");
+                detail.append("  {SCREEN.red("fail {run.failed}")}")
             fi
 
             if run.skipped > 0 then
-                detail.append("  {SCREEN.dim("skip {run.skipped}")}");
+                detail.append("  {SCREEN.dim("skip {run.skipped}")}")
             fi
 
             if run.is_done then
-                detail.append("  {SCREEN.dim("done")}");
+                detail.append("  {SCREEN.dim("done")}")
             fi
 
-            return "{painted}{detail.to_string()}";
+            return "{painted}{detail.to_string()}"
         si
 
         render_pull_requests(
@@ -319,12 +319,12 @@ namespace Dashboard is
 
             if snapshot.pull_requests_fetched_at == 0L then
                 lines.add("  {SCREEN.dim("fetching...")}")
-                return;
+                return
             fi
 
             if pull_requests.count == 0 then
                 lines.add("  {SCREEN.dim("none open")}")
-                return;
+                return
             fi
 
             let index mut = 0
@@ -332,19 +332,19 @@ namespace Dashboard is
             while index < pull_requests.count /\ index < rows do
                 lines.add(format_pull_request(pull_requests[index]))
 
-                index = index + 1;
+                index = index + 1
             od
 
-            add_overflow(lines, pull_requests.count - index);
+            add_overflow(lines, pull_requests.count - index)
         si
 
         format_pull_request(pull_request: PULL_REQUEST) -> string is
             let marker mut = SCREEN.yellow("*")
 
             if pull_request.is_bad then
-                marker = SCREEN.red("!");
+                marker = SCREEN.red("!")
             elif pull_request.is_good then
-                marker = SCREEN.green("+");
+                marker = SCREEN.green("+")
             fi
 
             let columns = LAYOUT.get_pull_request_columns(_width)
@@ -357,7 +357,7 @@ namespace Dashboard is
                 line.try_append(
                     columns.repository + 1,
                     " {SCREEN.dim(SCREEN.pad(pull_request.repository, columns.repository))}"
-                );
+                )
             fi
 
             line.try_append(
@@ -368,34 +368,34 @@ namespace Dashboard is
             line.try_append(columns.branch + 1, " {SCREEN.pad(pull_request.branch, columns.branch)}")
 
             if columns.checks > 0 then
-                line.try_append(columns.checks + 1, " {format_checks(pull_request.checks, columns.checks)}");
+                line.try_append(columns.checks + 1, " {format_checks(pull_request.checks, columns.checks)}")
             fi
 
             line.try_append(columns.review + 1, " {format_review(pull_request.review, columns.review)}")
 
-            return line.to_string();
+            return line.to_string()
         si
 
         format_checks(state: string, width: int) -> string static is
             if state =~ "SUCCESS" then
-                return SCREEN.green(SCREEN.pad("ci ok", width));
+                return SCREEN.green(SCREEN.pad("ci ok", width))
             elif state =~ "FAILURE" \/ state =~ "ERROR" then
-                return SCREEN.red(SCREEN.pad("ci fail", width));
+                return SCREEN.red(SCREEN.pad("ci fail", width))
             elif state =~ "PENDING" then
-                return SCREEN.yellow(SCREEN.pad("ci ...", width));
+                return SCREEN.yellow(SCREEN.pad("ci ...", width))
             fi
 
-            return SCREEN.dim(SCREEN.pad("ci -", width));
+            return SCREEN.dim(SCREEN.pad("ci -", width))
         si
 
         format_review(decision: string, width: int) -> string static is
             if decision =~ "APPROVED" then
-                return SCREEN.green(SCREEN.pad("approved", width));
+                return SCREEN.green(SCREEN.pad("approved", width))
             elif decision =~ "CHANGES_REQUESTED" then
-                return SCREEN.red(SCREEN.pad("changes", width));
+                return SCREEN.red(SCREEN.pad("changes", width))
             fi
 
-            return SCREEN.yellow(SCREEN.pad("pending", width));
+            return SCREEN.yellow(SCREEN.pad("pending", width))
         si
 
         // The footer carries the key hints, unless a confirmation is pending —
@@ -405,17 +405,17 @@ namespace Dashboard is
 
             if _view.pending_kill_pid > 0 then
                 lines.add(SCREEN.red(SCREEN.clip("terminate session {_view.pending_kill_pid}?  y / n", _width)))
-                return;
+                return
             fi
 
             if _view.message? then
                 lines.add(SCREEN.yellow(SCREEN.clip(_view.message, _width)))
-                return;
+                return
             fi
 
             // Clipped like everything else: the hints are the longest fixed
             // string in the frame, so a narrow window would wrap on them.
-            lines.add(SCREEN.dim(SCREEN.clip(key_hints, _width)));
+            lines.add(SCREEN.dim(SCREEN.clip(key_hints, _width)))
         si
     si
 si

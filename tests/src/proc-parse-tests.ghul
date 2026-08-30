@@ -15,7 +15,7 @@ namespace Tests is
             let times = PROCESSOR_TIMES.parse(stat_line)!
 
             is_not_null(times)
-            are_equal(900L, times.total);
+            are_equal(900L, times.total)
         si
 
         @Test()
@@ -23,18 +23,18 @@ namespace Tests is
             let times = PROCESSOR_TIMES.parse(stat_line)!
 
             // 900 total less 700 idle and 50 iowait.
-            are_equal(150L, times.busy);
+            are_equal(150L, times.busy)
         si
 
         @Test()
         processor_times__parse__given_a_non_cpu_line__returns_null() is
-            is_null(PROCESSOR_TIMES.parse("intr 12345 0 0"));
+            is_null(PROCESSOR_TIMES.parse("intr 12345 0 0"))
         si
 
         @Test()
         processor_times__parse__given_empty_input__returns_null() is
             is_null(PROCESSOR_TIMES.parse(""))
-            is_null(PROCESSOR_TIMES.parse(null));
+            is_null(PROCESSOR_TIMES.parse(null))
         si
 
         @Test()
@@ -44,7 +44,7 @@ namespace Tests is
             are_equal(10L, times.total)
 
             // The fourth column is idle, so only the first three are busy.
-            are_equal(6L, times.busy);
+            are_equal(6L, times.busy)
         si
 
         @Test()
@@ -53,19 +53,19 @@ namespace Tests is
             let current = PROCESSOR_TIMES(150L, 300L)
 
             // 50 of the 100 ticks that elapsed were busy.
-            are_close(50.0D, PROCESSOR_TIMES(150L, 300L).percent_since(previous), 0.001D);
+            are_close(50.0D, PROCESSOR_TIMES(150L, 300L).percent_since(previous), 0.001D)
         si
 
         @Test()
         processor_times__percent_since__given_no_previous_sample__is_zero() is
-            are_close(0.0D, PROCESSOR_TIMES(150L, 300L).percent_since(null), 0.001D);
+            are_close(0.0D, PROCESSOR_TIMES(150L, 300L).percent_since(null), 0.001D)
         si
 
         @Test()
         processor_times__percent_since__given_no_elapsed_time__is_zero() is
             let same = PROCESSOR_TIMES(150L, 300L)
 
-            are_close(0.0D, same.percent_since(same), 0.001D);
+            are_close(0.0D, same.percent_since(same), 0.001D)
         si
 
         // A core going offline and back can leave the counters lower than they
@@ -74,14 +74,14 @@ namespace Tests is
         processor_times__percent_since__given_counters_that_went_backwards__is_zero() is
             let previous = PROCESSOR_TIMES(500L, 900L)
 
-            are_close(0.0D, PROCESSOR_TIMES(100L, 200L).percent_since(previous), 0.001D);
+            are_close(0.0D, PROCESSOR_TIMES(100L, 200L).percent_since(previous), 0.001D)
         si
 
         @Test()
         processor_times__percent_since__is_capped_at_one_hundred() is
             let previous = PROCESSOR_TIMES(0L, 0L)
 
-            are_close(100.0D, PROCESSOR_TIMES(500L, 100L).percent_since(previous), 0.001D);
+            are_close(100.0D, PROCESSOR_TIMES(500L, 100L).percent_since(previous), 0.001D)
         si
 
         @Test()
@@ -93,7 +93,7 @@ namespace Tests is
 
             are_equal(3, all.count)
             are_equal(100L, all[0].total)
-            are_equal(50L, all[1].total);
+            are_equal(50L, all[1].total)
         si
     si
 
@@ -111,7 +111,7 @@ namespace Tests is
             are_equal(16364728L, memory.total_kb)
             are_equal(9748080L, memory.available_kb)
             are_equal(2000000L, memory.swap_total_kb)
-            are_equal(1500000L, memory.swap_free_kb);
+            are_equal(1500000L, memory.swap_free_kb)
         si
 
         @Test()
@@ -119,7 +119,7 @@ namespace Tests is
             let memory = MEMORY_INFO.parse(meminfo)
 
             are_equal(6616648L, memory.used_kb)
-            are_equal(500000L, memory.swap_used_kb);
+            are_equal(500000L, memory.swap_used_kb)
         si
 
         @Test()
@@ -127,7 +127,7 @@ namespace Tests is
             let memory = MEMORY_INFO.parse("")
 
             are_equal(0L, memory.total_kb)
-            are_equal(0L, memory.used_kb);
+            are_equal(0L, memory.used_kb)
         si
     si
 
@@ -137,12 +137,12 @@ namespace Tests is
 
         @Test()
         load_average__parse__reads_the_one_minute_figure() is
-            are_close(0.76D, LOAD_AVERAGE.parse("0.76 0.49 1.39 2/788 395137"), 0.001D);
+            are_close(0.76D, LOAD_AVERAGE.parse("0.76 0.49 1.39 2/788 395137"), 0.001D)
         si
 
         @Test()
         load_average__parse__given_empty_input__is_zero() is
-            are_close(0.0D, LOAD_AVERAGE.parse(""), 0.001D);
+            are_close(0.0D, LOAD_AVERAGE.parse(""), 0.001D)
         si
     si
 
@@ -159,14 +159,14 @@ namespace Tests is
             let stat = PROCESS_STAT.parse("1234 (dotnet) {columns_after_command}")!
 
             is_not_null(stat)
-            are_equal(4321, stat.parent_pid);
+            are_equal(4321, stat.parent_pid)
         si
 
         @Test()
         process_stat__parse__sums_user_and_system_time() is
             let stat = PROCESS_STAT.parse("1234 (dotnet) {columns_after_command}")!
 
-            are_equal(380L, stat.processor_ticks);
+            are_equal(380L, stat.processor_ticks)
         si
 
         // The classic trap: splitting the whole line on spaces misreads every
@@ -177,7 +177,7 @@ namespace Tests is
 
             are_equal("Web Content", stat.command)
             are_equal(4321, stat.parent_pid)
-            are_equal(380L, stat.processor_ticks);
+            are_equal(380L, stat.processor_ticks)
         si
 
         // Scanning to the *last* parenthesis is what makes this work.
@@ -186,18 +186,18 @@ namespace Tests is
             let stat = PROCESS_STAT.parse("1234 (weird (name) here) {columns_after_command}")!
 
             are_equal("weird (name) here", stat.command)
-            are_equal(4321, stat.parent_pid);
+            are_equal(4321, stat.parent_pid)
         si
 
         @Test()
         process_stat__parse__given_a_truncated_line__returns_null() is
-            is_null(PROCESS_STAT.parse("1234 (dotnet) S 4321"));
+            is_null(PROCESS_STAT.parse("1234 (dotnet) S 4321"))
         si
 
         @Test()
         process_stat__parse__given_input_without_a_command__returns_null() is
             is_null(PROCESS_STAT.parse("1234 dotnet S 4321 1 1 0 -1 0 0 0 0 0 250 130"))
-            is_null(PROCESS_STAT.parse(""));
+            is_null(PROCESS_STAT.parse(""))
         si
     si
 si

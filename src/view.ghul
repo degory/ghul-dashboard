@@ -25,13 +25,13 @@ namespace Dashboard is
 
             while index < sessions.count do
                 if sessions[index].pid == selected_pid then
-                    return index;
+                    return index
                 fi
 
-                index = index + 1;
+                index = index + 1
             od
 
-            return -1;
+            return -1
         si
 
         // Moves the selection by `delta` rows, clamping at both ends. A
@@ -40,39 +40,39 @@ namespace Dashboard is
         move(sessions: MutableList[SESSION], delta: int) is
             if sessions.count == 0 then
                 selected_pid = 0
-                return;
+                return
             fi
 
             let current = get_selected_index(sessions)
 
             if current < 0 then
                 selected_pid = sessions[0].pid
-                return;
+                return
             fi
 
             let next mut = current + delta
 
             if next < 0 then
-                next = 0;
+                next = 0
             elif next >= sessions.count then
-                next = sessions.count - 1;
+                next = sessions.count - 1
             fi
 
-            selected_pid = sessions[next].pid;
+            selected_pid = sessions[next].pid
         si
 
         get_selected(sessions: MutableList[SESSION]) -> SESSION? is
             let index = get_selected_index(sessions)
 
             if index < 0 then
-                return null;
+                return null
             fi
 
-            return sessions[index];
+            return sessions[index]
         si
 
         clear_pending_kill() is
-            pending_kill_pid = 0;
+            pending_kill_pid = 0
         si
     si
 si

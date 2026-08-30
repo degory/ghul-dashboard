@@ -7,7 +7,7 @@ namespace Dashboard is
 
         init(name: int, where: int) is
             self.name = name
-            self.where = where;
+            self.where = where
         si
     si
 
@@ -23,7 +23,7 @@ namespace Dashboard is
             self.repository = repository
             self.branch = branch
             self.checks = checks
-            self.review = review;
+            self.review = review
         si
     si
 
@@ -55,12 +55,12 @@ namespace Dashboard is
             let elastic mut = width - session_fixed_width
 
             if elastic < minimum_elastic_width then
-                elastic = minimum_elastic_width;
+                elastic = minimum_elastic_width
             fi
 
             let name = elastic * 55 / 100
 
-            return SESSION_COLUMNS(name, elastic - name);
+            return SESSION_COLUMNS(name, elastic - name)
         si
 
         // A pull-request row: indent, marker, repository, number, branch,
@@ -99,7 +99,7 @@ namespace Dashboard is
                         full,
                         pull_request_checks_width,
                         pull_request_review_width
-                    );
+                    )
             fi
 
             let without_repository = full + pull_request_repository_width + 1
@@ -111,16 +111,16 @@ namespace Dashboard is
                         without_repository,
                         pull_request_checks_width,
                         pull_request_review_width
-                    );
+                    )
             fi
 
             let without_checks mut = without_repository + pull_request_checks_width + 1
 
             if without_checks < minimum_branch_width then
-                without_checks = minimum_branch_width;
+                without_checks = minimum_branch_width
             fi
 
-            return PULL_REQUEST_COLUMNS(0, without_checks, 0, pull_request_review_width);
+            return PULL_REQUEST_COLUMNS(0, without_checks, 0, pull_request_review_width)
         si
 
         // The header carries a title, a clock, two labelled meters with their
@@ -151,12 +151,12 @@ namespace Dashboard is
             let meter = (width - header_text_width) / 2
 
             if meter < minimum_meter_width then
-                return 0;
+                return 0
             elif meter > maximum_meter_width then
-                return maximum_meter_width;
+                return maximum_meter_width
             fi
 
-            return meter;
+            return meter
         si
 
         // Rows the panels have between them: two header rows, three panel
@@ -175,18 +175,18 @@ namespace Dashboard is
             let rows = height - panel_furniture_rows - run_rows - pull_request_rows
 
             if rows < minimum_session_rows then
-                return minimum_session_rows;
+                return minimum_session_rows
             fi
 
-            return rows;
+            return rows
         si
 
         get_capped(count: int, cap: int) -> int static is
             if count > cap then
-                return cap;
+                return cap
             fi
 
-            return count;
+            return count
         si
     si
 si

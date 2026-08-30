@@ -23,29 +23,29 @@ namespace Dashboard is
 
                     if i >= arguments.count then
                         Std.write_line("--interval requires a value in seconds")
-                        return 1;
+                        return 1
                     fi
 
-                    interval = cast int(double.parse(arguments[i]) * 1000.0D);
+                    interval = cast int(double.parse(arguments[i]) * 1000.0D)
                 elif argument =~ "--once" then
-                    once = true;
+                    once = true
                 elif argument =~ "--help" \/ argument =~ "-h" then
                     write_usage()
-                    return 0;
+                    return 0
                 else
                     Std.write_line("unknown argument: {argument}")
                     write_usage()
-                    return 1;
+                    return 1
                 fi
 
-                i = i + 1;
+                i = i + 1
             od
 
             let workspace = find_workspace()
 
             if !workspace? then
                 Std.write_line("not inside a ghūl workspace (no directory above holding CLAUDE.md and worktrees/)")
-                return 1;
+                return 1
             fi
 
             let collector = COLLECTOR(workspace)
@@ -65,10 +65,10 @@ namespace Dashboard is
                 collector.resolve_locations(snapshot)
 
                 for line in RENDERER(view, now()).render(snapshot) do
-                    Std.write_line(line);
+                    Std.write_line(line)
                 od
 
-                return 0;
+                return 0
             fi
 
             let screen = SCREEN()
@@ -84,10 +84,10 @@ namespace Dashboard is
 
                 if !snapshot? then
                     if handle_keys(screen, view, Collections.LIST[SESSION](), interval) then
-                        break;
+                        break
                     fi
 
-                    continue;
+                    continue
                 fi
 
                 let sessions = snapshot.sessions | .collect_list()
@@ -99,23 +99,23 @@ namespace Dashboard is
                     view.width = screen.width
                     view.height = screen.height
 
-                    screen.clear();
+                    screen.clear()
                 fi
 
                 if view.selected_pid == 0 /\ sessions.count > 0 then
-                    view.selected_pid = sessions[0].pid;
+                    view.selected_pid = sessions[0].pid
                 fi
 
                 screen.paint(RENDERER(view, now()).render(snapshot))
 
                 if handle_keys(screen, view, sessions, interval) then
-                    break;
+                    break
                 fi
             od
 
             screen.leave()
 
-            return 0;
+            return 0
         si
 
         // A collector failure is shown rather than fatal: these are other
@@ -129,11 +129,11 @@ namespace Dashboard is
 
                 view.message = null
 
-                return snapshot;
+                return snapshot
             catch ex: Exception
                 view.message = "collector failed: {ex.message}"
 
-                return null;
+                return null
             yrt
         si
 
@@ -158,39 +158,39 @@ namespace Dashboard is
                         key.key_char == cast char(3) \/
                         key.key == System.ConsoleKey.ESCAPE
                     then
-                        return true;
+                        return true
                     elif key.key == System.ConsoleKey.UP_ARROW then
                         view.clear_pending_kill()
                         view.move(sessions, -1)
-                        return false;
+                        return false
                     elif key.key == System.ConsoleKey.DOWN_ARROW then
                         view.clear_pending_kill()
                         view.move(sessions, 1)
-                        return false;
+                        return false
                     elif key.key_char == cast char(12) then
                         // Ctrl-L: repaint from nothing, the conventional escape
                         // from a screen another program has scribbled on.
                         screen.clear()
-                        return false;
+                        return false
                     elif key.key_char == 'k' then
                         request_kill(view, sessions)
-                        return false;
+                        return false
                     elif view.pending_kill_pid > 0 /\ (key.key_char == 'y' \/ key.key_char == 'Y') then
                         confirm_kill(view)
-                        return false;
+                        return false
                     elif view.pending_kill_pid > 0 then
                         view.clear_pending_kill()
                         view.message = null
-                        return false;
+                        return false
                     fi
                 fi
 
                 System.Threading.Thread.sleep(poll)
 
-                waited = waited + poll;
+                waited = waited + poll
             od
 
-            return false;
+            return false
         si
 
         request_kill(view: VIEW, sessions: Collections.MutableList[SESSION]) static is
@@ -198,7 +198,7 @@ namespace Dashboard is
 
             if !session? then
                 view.message = "no session selected"
-                return;
+                return
             fi
 
             // Terminating the session this dashboard is running under would
@@ -211,11 +211,11 @@ namespace Dashboard is
 
             if PROCESS_TREE.find_ancestor(System.Environment.process_id, candidates) > 0 then
                 view.message = "that session is running this dashboard"
-                return;
+                return
             fi
 
             view.pending_kill_pid = session.pid
-            view.message = null;
+            view.message = null
         si
 
         // SIGTERM rather than a kill: a session asked to stop can save its
@@ -228,9 +228,9 @@ namespace Dashboard is
             let output = PROCESS_RUNNER.run("kill", ["-TERM", "{pid}"])
 
             if string.is_null_or_white_space(output) then
-                view.message = "sent SIGTERM to {pid}";
+                view.message = "sent SIGTERM to {pid}"
             else
-                view.message = "kill {pid}: {output.trim()}";
+                view.message = "kill {pid}: {output.trim()}"
             fi
         si
 
@@ -242,17 +242,17 @@ namespace Dashboard is
             let override = System.Environment.get_environment_variable("GHUL_WORKSPACE")
 
             if !string.is_null_or_white_space(override) /\ Directory.exists(override) then
-                return override;
+                return override
             fi
 
             return
                 find_workspace_above(System.Environment.current_directory) ??
-                find_workspace_above(System.AppContext.base_directory);
+                find_workspace_above(System.AppContext.base_directory)
         si
 
         find_workspace_above(start: string?) -> string? static is
             if string.is_null_or_white_space(start) then
-                return null;
+                return null
             fi
 
             let current mut = start!
@@ -261,21 +261,21 @@ namespace Dashboard is
 
             while hops < 16 do
                 if File.exists(Path.join(current, "CLAUDE.md")) /\ Directory.exists(Path.join(current, "worktrees")) then
-                    return current;
+                    return current
                 fi
 
                 let parent = Directory.get_parent(current)
 
                 if !parent? then
-                    return null;
+                    return null
                 fi
 
                 current = parent.full_name
 
-                hops = hops + 1;
+                hops = hops + 1
             od
 
-            return null;
+            return null
         si
 
         now() -> long static =>
@@ -285,7 +285,7 @@ namespace Dashboard is
             Std.write_line("usage: ghul-dashboard [--interval <seconds>] [--once]")
             Std.write_line("")
             Std.write_line("  Live view of Claude Code sessions, test runs and open pull requests")
-            Std.write_line("  across the ghūl workspace. Press q to quit.");
+            Std.write_line("  across the ghūl workspace. Press q to quit.")
         si
     si
 si

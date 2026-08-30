@@ -28,7 +28,7 @@ namespace Dashboard is
                 // Arguments go in one at a time rather than as a command line,
                 // so nothing needs quoting or escaping.
                 for argument in arguments do
-                    start_info.argument_list.add(argument);
+                    start_info.argument_list.add(argument)
                 od
 
                 start_info.redirect_standard_output = true
@@ -38,7 +38,7 @@ namespace Dashboard is
                 let process = Process.start(start_info)
 
                 if !process? then
-                    return "";
+                    return ""
                 fi
 
                 let output = process.standard_output.read_to_end()
@@ -47,9 +47,9 @@ namespace Dashboard is
                 // so this reaps an all-but-exited process.
                 process.wait_for_exit(timeout_ms)
 
-                return output;
+                return output
             catch ex: Exception
-                return "";
+                return ""
             yrt
         si
     si

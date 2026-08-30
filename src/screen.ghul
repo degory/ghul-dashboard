@@ -22,13 +22,13 @@ namespace Dashboard is
                 let width = Std.window_width
 
                 if width > 0 then
-                    return width;
+                    return width
                 fi
             catch ex: Exception
-                return 100;
+                return 100
             yrt
 
-            return 100;
+            return 100
         si
 
         height: int is
@@ -36,33 +36,33 @@ namespace Dashboard is
                 let height = Std.window_height
 
                 if height > 0 then
-                    return height;
+                    return height
                 fi
             catch ex: Exception
-                return 40;
+                return 40
             yrt
 
-            return 40;
+            return 40
         si
 
         enter() is
             try
                 // Ctrl-C arrives as input rather than terminating the process,
                 // so the alternate screen is always restored on the way out.
-                Std.treat_control_c_as_input = true;
+                Std.treat_control_c_as_input = true
             catch ex: Exception
                 // A terminal that will not take the setting still quits on `q`.
-                _entered = _entered;
+                _entered = _entered
             yrt
 
             Std.write("{escape}[?1049h{escape}[?25l")
 
-            _entered = true;
+            _entered = true
         si
 
         leave() is
             if !_entered then
-                return;
+                return
             fi
 
             Std.write("{escape}[?25h{escape}[?1049l")
@@ -70,9 +70,9 @@ namespace Dashboard is
             _entered = false
 
             try
-                Std.treat_control_c_as_input = false;
+                Std.treat_control_c_as_input = false
             catch ex: Exception
-                return;
+                return
             yrt
         si
 
@@ -84,30 +84,30 @@ namespace Dashboard is
             for line in lines do
                 text.append(line)
                 text.append("{escape}[K")
-                text.append("\n");
+                text.append("\n")
             od
 
             text.append("{escape}[J")
 
-            Std.write(text.to_string());
+            Std.write(text.to_string())
         si
 
         // Truncation is by visible characters, so it is applied to text before
         // any colour sequences are wrapped around it.
         clip(text: string?, width: int) -> string static is
             if !text? then
-                return "";
+                return ""
             fi
 
             if text.length <= width then
-                return text;
+                return text
             fi
 
             if width <= 1 then
-                return text.substring(0, width);
+                return text.substring(0, width)
             fi
 
-            return "{text.substring(0, width - 1)}~";
+            return "{text.substring(0, width - 1)}~"
         si
 
         pad(text: string?, width: int) -> string static =>
@@ -117,7 +117,7 @@ namespace Dashboard is
         // rewrites the lines it draws, so anything left by a resize — or by
         // another program writing over the screen — needs this to go away.
         clear() is
-            Std.write("{escape}[2J{escape}[H");
+            Std.write("{escape}[2J{escape}[H")
         si
 
         reverse(text: string) -> string static => paint_text(text, "7")
@@ -130,6 +130,6 @@ namespace Dashboard is
         bold(text: string) -> string static => paint_text(text, "01")
 
         paint_text(text: string, code: string) -> string static =>
-            "{escape}[{code}m{text}{escape}[00m";
+            "{escape}[{code}m{text}{escape}[00m"
     si
 si

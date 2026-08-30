@@ -75,7 +75,7 @@ namespace Dashboard is
 
         init() is
             core_percents = []
-            top = Collections.LIST[PROCESS_LOAD]();
+            top = Collections.LIST[PROCESS_LOAD]()
         si
     si
 
@@ -89,7 +89,7 @@ namespace Dashboard is
         init(pid: int, name: string, processor_percent: double) is
             self.pid = pid
             self.name = name
-            self.processor_percent = processor_percent;
+            self.processor_percent = processor_percent
         si
     si
 
@@ -104,15 +104,15 @@ namespace Dashboard is
         // <repo>/<slug> would say the same word twice.
         label: string =>
             if slug =~ repository then
-                repository;
+                repository
             else
-                "{repository}/{slug}";
+                "{repository}/{slug}"
             fi
 
         init(repository: string, path: string, branch: string) is
             self.repository = repository
             self.path = path
-            self.branch = branch;
+            self.branch = branch
         si
     si
 
@@ -131,7 +131,7 @@ namespace Dashboard is
             self.branch = branch
             self.repository = repository
             self.review = review
-            self.checks = checks;
+            self.checks = checks
         si
     si
 
@@ -158,7 +158,7 @@ namespace Dashboard is
             self.sessions = sessions
             self.runs = runs
             self.worktrees = worktrees
-            self.pull_requests = pull_requests;
+            self.pull_requests = pull_requests
         si
     si
 si

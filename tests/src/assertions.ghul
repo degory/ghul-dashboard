@@ -11,32 +11,32 @@ namespace Tests is
     // site repeating them.
 
     are_equal[T](expected: T, actual: T) is
-        MSTEST.are_equal[T](expected, actual, "", "", "");
+        MSTEST.are_equal[T](expected, actual, "", "", "")
     si
 
     are_equal[T](expected: T, actual: T, message: string) is
-        MSTEST.are_equal[T](expected, actual, message, "", "");
+        MSTEST.are_equal[T](expected, actual, message, "", "")
     si
 
     // Named apart from are_equal so a tolerance cannot be mistaken for a
     // message, and so the generic overload above stays unambiguous.
     are_close(expected: double, actual: double, tolerance: double) is
-        MSTEST.are_equal(expected, actual, tolerance, "", "", "");
+        MSTEST.are_equal(expected, actual, tolerance, "", "", "")
     si
 
     is_true(condition: bool) is
-        MSTEST.is_true(condition, "", "");
+        MSTEST.is_true(condition, "", "")
     si
 
     is_false(condition: bool) is
-        MSTEST.is_false(condition, "", "");
+        MSTEST.is_false(condition, "", "")
     si
 
     is_null(value: object?) is
-        MSTEST.is_null(value, "", "");
+        MSTEST.is_null(value, "", "")
     si
 
     is_not_null(value: object?) is
-        MSTEST.is_not_null(value, "", "");
+        MSTEST.is_not_null(value, "", "")
     si
 si

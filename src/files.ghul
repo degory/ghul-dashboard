@@ -16,9 +16,9 @@ namespace Dashboard is
     class FILES is
         read_text(path: string) -> string static is
             try
-                return File.read_all_text(path);
+                return File.read_all_text(path)
             catch ex: Exception
-                return "";
+                return ""
             yrt
         si
 
@@ -29,7 +29,7 @@ namespace Dashboard is
                 let stream = File.open_read(path)
 
                 if stream.length > length then
-                    stream.seek(stream.length - length, IO.SeekOrigin.BEGIN);
+                    stream.seek(stream.length - length, IO.SeekOrigin.BEGIN)
                 fi
 
                 let reader = StreamReader(stream)
@@ -38,48 +38,48 @@ namespace Dashboard is
 
                 reader.dispose()
 
-                return text;
+                return text
             catch ex: Exception
-                return "";
+                return ""
             yrt
         si
 
         list(directory: string, pattern: string) -> Iterable[string] static is
             try
                 if !Directory.exists(directory) then
-                    return LIST[string]();
+                    return LIST[string]()
                 fi
 
-                return Directory.get_files(directory, pattern);
+                return Directory.get_files(directory, pattern)
             catch ex: Exception
-                return LIST[string]();
+                return LIST[string]()
             yrt
         si
 
         list_directories(directory: string) -> Iterable[string] static is
             try
                 if !Directory.exists(directory) then
-                    return LIST[string]();
+                    return LIST[string]()
                 fi
 
-                return Directory.get_directories(directory);
+                return Directory.get_directories(directory)
             catch ex: Exception
-                return LIST[string]();
+                return LIST[string]()
             yrt
         si
 
         delete(path: string) static is
             try
                 if File.exists(path) then
-                    File.delete(path);
+                    File.delete(path)
                 fi
             catch ex: Exception
-                return;
+                return
             yrt
         si
 
         // The last path segment, which is the file or directory's own name.
         name_of(path: string) -> string static =>
-            path.substring(path.last_index_of('/') + 1);
+            path.substring(path.last_index_of('/') + 1)
     si
 si

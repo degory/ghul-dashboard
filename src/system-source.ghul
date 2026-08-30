@@ -33,14 +33,14 @@ namespace Dashboard is
             read_processor_times(SYSTEM())
             read_busiest(SYSTEM(), 0.0D)
 
-            _previous_at = now();
+            _previous_at = now()
         si
 
         sample() -> SYSTEM is
             let since = now() - _previous_at
 
             if since < minimum_window_ms then
-                System.Threading.Thread.sleep(cast int(minimum_window_ms - since));
+                System.Threading.Thread.sleep(cast int(minimum_window_ms - since))
             fi
 
             let result = SYSTEM()
@@ -56,7 +56,7 @@ namespace Dashboard is
 
             _previous_at = now()
 
-            return result;
+            return result
         si
 
         // /proc/stat leads with the aggregate line, then one line per core.
@@ -64,7 +64,7 @@ namespace Dashboard is
             let all = PROCESSOR_TIMES.parse_all(FILES.read_text("/proc/stat")) | .collect_list()
 
             if all.count == 0 then
-                return;
+                return
             fi
 
             result.processor_percent = all[0].percent_since(_previous_overall)
@@ -80,23 +80,23 @@ namespace Dashboard is
 
                 let previous =
                     if core < _previous_cores.count then
-                        _previous_cores[core];
+                        _previous_cores[core]
                     else
-                        null;
+                        null
                     fi
 
                 percents.add(all[index].percent_since(previous))
 
                 if core < _previous_cores.count then
-                    _previous_cores[core] = all[index];
+                    _previous_cores[core] = all[index]
                 else
-                    _previous_cores.add(all[index]);
+                    _previous_cores.add(all[index])
                 fi
 
-                index = index + 1;
+                index = index + 1
             od
 
-            result.core_percents = percents | .collect_array();
+            result.core_percents = percents | .collect_array()
         si
 
         read_memory(result: SYSTEM) static is
@@ -105,7 +105,7 @@ namespace Dashboard is
             result.memory_total_kb = memory.total_kb
             result.memory_available_kb = memory.available_kb
             result.swap_total_kb = memory.swap_total_kb
-            result.swap_free_kb = memory.swap_free_kb;
+            result.swap_free_kb = memory.swap_free_kb
         si
 
         // Per-process utilisation, as a share of one core, so a figure above 100
@@ -119,19 +119,19 @@ namespace Dashboard is
                 let stat = PROCESS_STAT.parse(FILES.read_text("/proc/{pid}/stat"))
 
                 if !stat? then
-                    continue;
+                    continue
                 fi
 
                 ticks[pid] = stat.processor_ticks
 
                 if elapsed_seconds <= 0.0D \/ !_previous_ticks.contains_key(pid) then
-                    continue;
+                    continue
                 fi
 
                 let worked = stat.processor_ticks - _previous_ticks[pid]
 
                 if worked <= 0L then
-                    continue;
+                    continue
                 fi
 
                 loads.add(
@@ -140,12 +140,12 @@ namespace Dashboard is
                         stat.command,
                         cast double(worked) * 100.0D / (ticks_per_second * elapsed_seconds)
                     )
-                );
+                )
             od
 
             _previous_ticks = ticks
 
-            result.top = take_busiest(loads, busiest_count);
+            result.top = take_busiest(loads, busiest_count)
         si
 
         // Selection sort over the first few: the list runs to hundreds of
@@ -157,7 +157,7 @@ namespace Dashboard is
             let taken = LIST[bool]()
 
             for load in loads do
-                taken.add(false);
+                taken.add(false)
             od
 
             let wanted = LAYOUT.get_capped(count, loads.count)
@@ -174,27 +174,27 @@ namespace Dashboard is
                         !taken[index] /\
                         (best < 0 \/ loads[index].processor_percent > loads[best].processor_percent)
                     then
-                        best = index;
+                        best = index
                     fi
 
-                    index = index + 1;
+                    index = index + 1
                 od
 
                 if best < 0 then
-                    break;
+                    break
                 fi
 
                 taken[best] = true
 
                 result.add(loads[best])
 
-                picked = picked + 1;
+                picked = picked + 1
             od
 
-            return result;
+            return result
         si
 
         now() -> long static =>
-            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds()
     si
 si
