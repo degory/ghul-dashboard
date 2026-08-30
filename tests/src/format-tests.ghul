@@ -15,7 +15,7 @@ namespace Tests is
         format__age__reads_in_seconds_then_minutes_then_hours() is
             are_equal("30s", FORMAT.age(now - 30000L, now))
             are_equal("5m", FORMAT.age(now - 300000L, now))
-            are_equal("2h", FORMAT.age(now - 7200000L, now));
+            are_equal("2h", FORMAT.age(now - 7200000L, now))
         si
 
         @Test()
@@ -23,21 +23,21 @@ namespace Tests is
             are_equal("59s", FORMAT.age(now - 59000L, now))
             are_equal("1m", FORMAT.age(now - 60000L, now))
             are_equal("59m", FORMAT.age(now - 3599000L, now))
-            are_equal("1h", FORMAT.age(now - 3600000L, now));
+            are_equal("1h", FORMAT.age(now - 3600000L, now))
         si
 
         // A zero timestamp means the session never reported a status, which
         // reads better as nothing than as a number.
         @Test()
         format__age__given_no_timestamp__is_empty() is
-            are_equal("", FORMAT.age(0L, now));
+            are_equal("", FORMAT.age(0L, now))
         si
 
         // Clocks move. A timestamp from the future should not render as a
         // negative age.
         @Test()
         format__age__given_a_future_timestamp__is_empty() is
-            are_equal("", FORMAT.age(now + 5000L, now));
+            are_equal("", FORMAT.age(now + 5000L, now))
         si
 
         @Test()
@@ -45,20 +45,20 @@ namespace Tests is
             are_equal("512K", FORMAT.size(512L))
             are_equal("2M", FORMAT.size(2048L))
             are_equal("1.0G", FORMAT.size(1048576L))
-            are_equal("15.6G", FORMAT.size(16364728L));
+            are_equal("15.6G", FORMAT.size(16364728L))
         si
 
         @Test()
         format__percent__is_padded_so_columns_line_up() is
             are_equal("  0%", FORMAT.percent(0.0D))
             are_equal(" 42%", FORMAT.percent(41.6D))
-            are_equal("100%", FORMAT.percent(100.0D));
+            are_equal("100%", FORMAT.percent(100.0D))
         si
 
         @Test()
         format__ratio__given_a_zero_denominator__is_zero() is
             are_close(0.0D, FORMAT.ratio(5L, 0L), 0.001D)
-            are_close(50.0D, FORMAT.ratio(5L, 10L), 0.001D);
+            are_close(50.0D, FORMAT.ratio(5L, 10L), 0.001D)
         si
     si
 
@@ -71,14 +71,14 @@ namespace Tests is
             are_equal("█████·····", METER.bar(50.0D, 10))
             are_equal("███·······", METER.bar(30.0D, 10))
             are_equal("██████████", METER.bar(100.0D, 10))
-            are_equal("··········", METER.bar(0.0D, 10));
+            are_equal("··········", METER.bar(0.0D, 10))
         si
 
         @Test()
         meter__bar__is_always_the_width_asked_for() is
             for width in [1, 4, 10, 24] do
                 for percent in [0.0D, 33.3D, 50.0D, 99.9D, 100.0D] do
-                    are_equal(width, METER.bar(percent, width).length);
+                    are_equal(width, METER.bar(percent, width).length)
                 od
             od
         si
@@ -92,13 +92,13 @@ namespace Tests is
 
             // One eighth, and seven eighths, of one column.
             are_equal("▏·······", METER.bar(1.6D, 8))
-            are_equal("▉·······", METER.bar(11.0D, 8));
+            are_equal("▉·······", METER.bar(11.0D, 8))
         si
 
         @Test()
         meter__bar__uses_a_whole_column_on_a_boundary() is
             are_equal("█·······", METER.bar(12.5D, 8))
-            are_equal("██······", METER.bar(25.0D, 8));
+            are_equal("██······", METER.bar(25.0D, 8))
         si
 
         // The glyph carries the height; the colour is applied separately, so
@@ -107,13 +107,13 @@ namespace Tests is
         meter__core_glyph__rises_with_the_load() is
             are_equal("▁", METER.core_glyph(0.0D))
             are_equal("▅", METER.core_glyph(50.0D))
-            are_equal("█", METER.core_glyph(100.0D));
+            are_equal("█", METER.core_glyph(100.0D))
         si
 
         @Test()
         meter__core_glyph__clamps_a_percentage_outside_the_range() is
             are_equal("█", METER.core_glyph(150.0D))
-            are_equal("▁", METER.core_glyph(-5.0D));
+            are_equal("▁", METER.core_glyph(-5.0D))
         si
 
         // A percentage outside the range would otherwise produce a bar longer or
@@ -121,7 +121,7 @@ namespace Tests is
         @Test()
         meter__bar__clamps_a_percentage_outside_the_range() is
             are_equal("██████████", METER.bar(150.0D, 10))
-            are_equal("··········", METER.bar(-10.0D, 10));
+            are_equal("··········", METER.bar(-10.0D, 10))
         si
     si
 si

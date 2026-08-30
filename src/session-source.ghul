@@ -24,16 +24,16 @@ namespace Dashboard is
 
             for c in name do
                 if c == '_' then
-                    capitalize = true;
+                    capitalize = true
                 elif capitalize then
                     result.append(char.to_upper(c))
-                    capitalize = false;
+                    capitalize = false
                 else
-                    result.append(c);
+                    result.append(c)
                 fi
             od
 
-            return result.to_string();
+            return result.to_string()
         si
     si
 
@@ -47,20 +47,20 @@ namespace Dashboard is
         // and sorting them last keeps the comparison total either way.
         compare(a: SESSION?, b: SESSION?) -> int is
             if !a? then
-                return if b? then 1; else 0; fi;
+                return if b? then 1; else 0; fi
             elif !b? then
-                return -1;
+                return -1
             fi
 
             if a.status_updated_at > b.status_updated_at then
-                return -1;
+                return -1
             elif a.status_updated_at < b.status_updated_at then
-                return 1;
+                return 1
             fi
 
             // Equal timestamps fall back to pid so the order is total, and rows
             // do not swap under the selection between frames.
-            return a.pid - b.pid;
+            return a.pid - b.pid
         si
     si
 
@@ -80,7 +80,7 @@ namespace Dashboard is
             _options = JsonSerializerOptions()
             _options.property_naming_policy = SNAKE_TO_CAMEL_CASE()
 
-            _order = MOST_RECENTLY_ACTIVE();
+            _order = MOST_RECENTLY_ACTIVE()
         si
 
         collect() -> MutableList[SESSION] is
@@ -92,26 +92,26 @@ namespace Dashboard is
                 // A record outlives the process it describes, so liveness is
                 // decided by the process, not the file.
                 if session? /\ PROCESS_TREE.is_alive(session.pid) then
-                    result.add(session);
+                    result.add(session)
                 fi
             od
 
             result.sort(_order)
 
-            return result;
+            return result
         si
 
         read(path: string) -> SESSION? is
             let text = FILES.read_text(path)
 
             if string.is_null_or_white_space(text) then
-                return null;
+                return null
             fi
 
             try
-                return JsonSerializer.deserialize[SESSION](text, _options);
+                return JsonSerializer.deserialize[SESSION](text, _options)
             catch ex: Exception
-                return null;
+                return null
             yrt
         si
     si

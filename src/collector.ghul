@@ -21,7 +21,7 @@ namespace Dashboard is
             _worktrees = WORKTREE_SOURCE(workspace)
             _pull_requests = PULL_REQUEST_SOURCE(_worktrees)
             _system = SYSTEM_SOURCE()
-            _locations = SESSION_LOCATIONS(workspace, home);
+            _locations = SESSION_LOCATIONS(workspace, home)
         si
 
         collect() -> SNAPSHOT is
@@ -40,16 +40,16 @@ namespace Dashboard is
             snapshot.pull_requests_fetched_at = _pull_requests.fetched_at
             snapshot.system = _system.sample()
 
-            return snapshot;
+            return snapshot
         si
 
         // Left to the caller to run after the first paint, since it reads a
         // transcript per session that no test run pinned.
         resolve_locations(snapshot: SNAPSHOT) is
-            _locations.attribute_from_transcripts(snapshot.sessions, snapshot.worktrees);
+            _locations.attribute_from_transcripts(snapshot.sessions, snapshot.worktrees)
         si
 
         now() -> long static =>
-            System.DateTimeOffset.utc_now.to_unix_time_milliseconds();
+            System.DateTimeOffset.utc_now.to_unix_time_milliseconds()
     si
 si

@@ -14,18 +14,18 @@ namespace Dashboard is
             let result = LIST[string]()
 
             if string.is_null_or_empty(text) then
-                return result;
+                return result
             fi
 
             for line in text!.split(['\n']) do
                 let trimmed = line.trim_end(['\r'])
 
                 if !string.is_null_or_empty(trimmed) then
-                    result.add(trimmed);
+                    result.add(trimmed)
                 fi
             od
 
-            return result;
+            return result
         si
 
         // Splits on spaces, dropping the empty strings that runs of spaces
@@ -34,25 +34,25 @@ namespace Dashboard is
             let result = LIST[string]()
 
             if string.is_null_or_empty(text) then
-                return result;
+                return result
             fi
 
             for word in text!.split([' ', '\t']) do
                 if !string.is_null_or_empty(word) then
-                    result.add(word);
+                    result.add(word)
                 fi
             od
 
-            return result;
+            return result
         si
 
         // Absent or malformed input reads as zero rather than throwing: these
         // parse machine-generated files, and a torn read is not worth a crash.
         to_long(text: string?) -> long static is
             try
-                return long.parse(text!);
+                return long.parse(text!)
             catch ex: Exception
-                return 0L;
+                return 0L
             yrt
         si
 
@@ -61,9 +61,9 @@ namespace Dashboard is
 
         to_double(text: string?) -> double static is
             try
-                return double.parse(text!);
+                return double.parse(text!)
             catch ex: Exception
-                return 0.0D;
+                return 0.0D
             yrt
         si
     si

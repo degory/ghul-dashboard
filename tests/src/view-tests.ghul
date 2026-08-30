@@ -18,7 +18,7 @@ namespace Tests is
             result.status = "idle"
             result.name = "session-{pid}"
 
-            return result;
+            return result
         si
 
         three_sessions() -> MutableList[SESSION] static is
@@ -28,7 +28,7 @@ namespace Tests is
             result.add(session(200, 2000L))
             result.add(session(300, 1000L))
 
-            return result;
+            return result
         si
 
         @Test()
@@ -41,7 +41,7 @@ namespace Tests is
 
             view.move(sessions, 1)
 
-            are_equal(200, view.selected_pid);
+            are_equal(200, view.selected_pid)
         si
 
         @Test()
@@ -60,7 +60,7 @@ namespace Tests is
 
             view.move(sessions, 1)
 
-            are_equal(300, view.selected_pid);
+            are_equal(300, view.selected_pid)
         si
 
         // Rows reorder as sessions become active. Tracking a pid rather than a
@@ -80,7 +80,7 @@ namespace Tests is
             reordered.add(sessions[1])
 
             are_equal(300, view.get_selected(reordered)!.pid)
-            are_equal(0, view.get_selected_index(reordered));
+            are_equal(0, view.get_selected_index(reordered))
         si
 
         // The selected session exited between frames.
@@ -94,7 +94,7 @@ namespace Tests is
 
             view.move(sessions, 1)
 
-            are_equal(100, view.selected_pid);
+            are_equal(100, view.selected_pid)
         si
 
         @Test()
@@ -103,7 +103,7 @@ namespace Tests is
 
             view.selected_pid = 999
 
-            are_equal(-1, view.get_selected_index(three_sessions()));
+            are_equal(-1, view.get_selected_index(three_sessions()))
         si
 
         @Test()
@@ -114,7 +114,7 @@ namespace Tests is
 
             view.move(LIST[SESSION](), 1)
 
-            are_equal(0, view.selected_pid);
+            are_equal(0, view.selected_pid)
         si
 
         @Test()
@@ -125,7 +125,7 @@ namespace Tests is
 
             view.clear_pending_kill()
 
-            are_equal(0, view.pending_kill_pid);
+            are_equal(0, view.pending_kill_pid)
         si
     si
 
@@ -139,7 +139,7 @@ namespace Tests is
             result.pid = pid
             result.status_updated_at = updated_at
 
-            return result;
+            return result
         si
 
         @Test()
@@ -147,7 +147,7 @@ namespace Tests is
             let order = MOST_RECENTLY_ACTIVE()
 
             is_true(order.compare(session(1, 2000L), session(2, 1000L)) < 0)
-            is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0);
+            is_true(order.compare(session(1, 1000L), session(2, 2000L)) > 0)
         si
 
         // A total order keeps equally-recent rows from swapping between frames
@@ -157,7 +157,7 @@ namespace Tests is
             let order = MOST_RECENTLY_ACTIVE()
 
             is_true(order.compare(session(1, 1000L), session(2, 1000L)) < 0)
-            are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)));
+            are_equal(0, order.compare(session(1, 1000L), session(1, 1000L)))
         si
 
         @Test()
@@ -172,7 +172,7 @@ namespace Tests is
 
             are_equal(2, sessions[0].pid)
             are_equal(3, sessions[1].pid)
-            are_equal(1, sessions[2].pid);
+            are_equal(1, sessions[2].pid)
         si
     si
 si

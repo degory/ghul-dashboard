@@ -20,12 +20,12 @@ namespace Dashboard is
 
         init(workspace: string) is
             _workspace = workspace
-            _worktrees = LIST[WORKTREE]();
+            _worktrees = LIST[WORKTREE]()
         si
 
         collect(now: long) -> Iterable[WORKTREE] is
             if _collected_at > 0L /\ now - _collected_at < refresh_interval_ms then
-                return _worktrees;
+                return _worktrees
             fi
 
             let result = LIST[WORKTREE]()
@@ -36,20 +36,20 @@ namespace Dashboard is
                 let output = PROCESS_RUNNER.run("git", ["-C", repository, "worktree", "list", "--porcelain"])
 
                 for worktree in WORKTREE_LIST.parse(name, output) do
-                    result.add(worktree);
+                    result.add(worktree)
                 od
             od
 
             // A run that found nothing is more likely a transient `git` failure
             // than every checkout vanishing, so the previous answer stands.
             if result.count == 0 /\ _collected_at > 0L then
-                return _worktrees;
+                return _worktrees
             fi
 
             _worktrees = result
             _collected_at = now
 
-            return result;
+            return result
         si
 
         // Checkouts sit directly under the workspace. A worktree's `.git` is a
@@ -62,11 +62,11 @@ namespace Dashboard is
                 let marker = Path.join(directory, ".git")
 
                 if Directory.exists(marker) \/ File.exists(marker) then
-                    result.add(directory);
+                    result.add(directory)
                 fi
             od
 
-            return result;
+            return result
         si
     si
 si

@@ -27,30 +27,30 @@ namespace Dashboard is
 
         init(workspace: WORKTREE_SOURCE) is
             _workspace = workspace
-            _pull_requests = LIST[PULL_REQUEST]();
+            _pull_requests = LIST[PULL_REQUEST]()
         si
 
         collect(now: long) -> Iterable[PULL_REQUEST] is
             if _fetched_at > 0L /\ now - _fetched_at < refresh_interval_ms then
-                return _pull_requests;
+                return _pull_requests
             fi
 
             let scope = get_scope()
 
             if scope| .count() == 0 then
-                return _pull_requests;
+                return _pull_requests
             fi
 
             let output = search(scope)
 
             if string.is_null_or_white_space(output) then
-                return _pull_requests;
+                return _pull_requests
             fi
 
             _pull_requests = PULL_REQUEST_ROWS.parse(output) | .collect_list()
             _fetched_at = now
 
-            return _pull_requests;
+            return _pull_requests
         si
 
         // Every brace is doubled: a single brace opens a string interpolation,
@@ -70,7 +70,7 @@ namespace Dashboard is
                 PROCESS_RUNNER.run(
                     get_gh_path(),
                     ["api", "graphql", "-f", "q=is:pr is:open {terms}", "-f", "query={query}", "--jq", filter]
-                );
+                )
         si
 
         // The workspace's `gh` wrapper supplies the bot credentials, and it is
@@ -81,15 +81,15 @@ namespace Dashboard is
             let wrapper = Path.join(home, ".local", "bin", "gh")
 
             if File.exists(wrapper) then
-                return wrapper;
+                return wrapper
             fi
 
-            return "gh";
+            return "gh"
         si
 
         get_scope() -> Iterable[string] is
             if _scope? then
-                return _scope;
+                return _scope
             fi
 
             let result = LIST[string]()
@@ -101,14 +101,14 @@ namespace Dashboard is
                     let slug = get_repository_slug(line)
 
                     if slug? then
-                        result.add("repo:{slug}");
+                        result.add("repo:{slug}")
                     fi
                 od
             od
 
             _scope = result
 
-            return result;
+            return result
         si
 
         // Reduces either remote form — git@host:owner/name.git or
@@ -117,16 +117,16 @@ namespace Dashboard is
             let trimmed mut = url.trim()
 
             if trimmed.ends_with(".git") then
-                trimmed = trimmed.substring(0, trimmed.length - 4);
+                trimmed = trimmed.substring(0, trimmed.length - 4)
             fi
 
             let parts = trimmed.split(['/', ':'])
 
             if parts.count < 2 then
-                return null;
+                return null
             fi
 
-            return "{parts[parts.count - 2]}/{parts[parts.count - 1]}";
+            return "{parts[parts.count - 2]}/{parts[parts.count - 1]}"
         si
     si
 si

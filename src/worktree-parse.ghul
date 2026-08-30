@@ -15,15 +15,15 @@ namespace Dashboard is
 
             for line in TEXT.lines(text) do
                 if line.starts_with("worktree ") then
-                    path = line.substring(9);
+                    path = line.substring(9)
                 elif line.starts_with("branch refs/heads/") then
-                    result.add(WORKTREE(repository, path, line.substring(18)));
+                    result.add(WORKTREE(repository, path, line.substring(18)))
                 elif line =~ "detached" then
-                    result.add(WORKTREE(repository, path, detached_branch));
+                    result.add(WORKTREE(repository, path, detached_branch))
                 fi
             od
 
-            return result;
+            return result
         si
     si
 si

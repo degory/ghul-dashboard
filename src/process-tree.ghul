@@ -11,10 +11,10 @@ namespace Dashboard is
             let stat = PROCESS_STAT.parse(FILES.read_text("/proc/{pid}/stat"))
 
             if !stat? then
-                return 0;
+                return 0
             fi
 
-            return stat.parent_pid;
+            return stat.parent_pid
         si
 
         // The deepest ancestor of `pid` that is in `candidates`, or zero. This is
@@ -33,21 +33,21 @@ namespace Dashboard is
 
             while current > 1 /\ hops < maximum_hops do
                 if candidates.contains(current) then
-                    return current;
+                    return current
                 fi
 
                 let parent = parent_of(current)
 
                 if parent <= 0 then
-                    return 0;
+                    return 0
                 fi
 
                 current = parent
 
-                hops = hops + 1;
+                hops = hops + 1
             od
 
-            return 0;
+            return 0
         si
 
         // Every live process, by pid. /proc holds a numerically-named directory
@@ -59,25 +59,25 @@ namespace Dashboard is
                 let name = FILES.name_of(directory)
 
                 if is_all_digits(name) then
-                    result.add(TEXT.to_int(name));
+                    result.add(TEXT.to_int(name))
                 fi
             od
 
-            return result;
+            return result
         si
 
         is_all_digits(text: string) -> bool static is
             if string.is_null_or_empty(text) then
-                return false;
+                return false
             fi
 
             for c in text do
                 if !char.is_digit(c) then
-                    return false;
+                    return false
                 fi
             od
 
-            return true;
+            return true
         si
     si
 si

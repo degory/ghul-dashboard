@@ -15,7 +15,7 @@ namespace Dashboard is
 
         init(busy: long, total: long) is
             self.busy = busy
-            self.total = total;
+            self.total = total
         si
 
         // Columns are user nice system idle iowait irq softirq steal ...; time
@@ -25,7 +25,7 @@ namespace Dashboard is
             let columns = TEXT.words(line) | .collect_list()
 
             if columns.count < 5 \/ !columns[0].starts_with("cpu") then
-                return null;
+                return null
             fi
 
             let total mut = 0L
@@ -41,17 +41,17 @@ namespace Dashboard is
                 // Columns four and five, counting the label, are idle and
                 // iowait.
                 if index == 4 \/ index == 5 then
-                    idle = idle + value;
+                    idle = idle + value
                 fi
 
-                index = index + 1;
+                index = index + 1
             od
 
             if total == 0L then
-                return null;
+                return null
             fi
 
-            return PROCESSOR_TIMES(total - idle, total);
+            return PROCESSOR_TIMES(total - idle, total)
         si
 
         // Utilisation over the interval between two samples. Zero when there is
@@ -59,28 +59,28 @@ namespace Dashboard is
         // backwards — which happens if a core is hotplugged.
         percent_since(previous: PROCESSOR_TIMES?) -> double is
             if !previous? then
-                return 0.0D;
+                return 0.0D
             fi
 
             let elapsed = total - previous.total
 
             if elapsed <= 0L then
-                return 0.0D;
+                return 0.0D
             fi
 
             let worked = busy - previous.busy
 
             if worked <= 0L then
-                return 0.0D;
+                return 0.0D
             fi
 
             let percent = cast double(worked) * 100.0D / cast double(elapsed)
 
             if percent > 100.0D then
-                return 100.0D;
+                return 100.0D
             fi
 
-            return percent;
+            return percent
         si
 
         // Every CPU line in /proc/stat: the aggregate first, then one per core.
@@ -91,11 +91,11 @@ namespace Dashboard is
                 let times = parse(line)
 
                 if times? then
-                    result.add(times);
+                    result.add(times)
                 fi
             od
 
-            return result;
+            return result
         si
     si
 
@@ -119,23 +119,23 @@ namespace Dashboard is
                 let words = TEXT.words(line) | .collect_list()
 
                 if words.count < 2 then
-                    continue;
+                    continue
                 fi
 
                 let value = TEXT.to_long(words[1])
 
                 if words[0] =~ "MemTotal:" then
-                    result.total_kb = value;
+                    result.total_kb = value
                 elif words[0] =~ "MemAvailable:" then
-                    result.available_kb = value;
+                    result.available_kb = value
                 elif words[0] =~ "SwapTotal:" then
-                    result.swap_total_kb = value;
+                    result.swap_total_kb = value
                 elif words[0] =~ "SwapFree:" then
-                    result.swap_free_kb = value;
+                    result.swap_free_kb = value
                 fi
             od
 
-            return result;
+            return result
         si
     si
 
@@ -145,10 +145,10 @@ namespace Dashboard is
             let words = TEXT.words(text) | .collect_list()
 
             if words.count == 0 then
-                return 0.0D;
+                return 0.0D
             fi
 
-            return TEXT.to_double(words[0]);
+            return TEXT.to_double(words[0])
         si
     si
 
@@ -164,19 +164,19 @@ namespace Dashboard is
         init(command: string, parent_pid: int, processor_ticks: long) is
             self.command = command
             self.parent_pid = parent_pid
-            self.processor_ticks = processor_ticks;
+            self.processor_ticks = processor_ticks
         si
 
         parse(text: string?) -> PROCESS_STAT? static is
             if string.is_null_or_empty(text) then
-                return null;
+                return null
             fi
 
             let open = text!.index_of('(')
             let close = text.last_index_of(')')
 
             if open < 0 \/ close < open then
-                return null;
+                return null
             fi
 
             let command = text.substring(open + 1, close - open - 1)
@@ -186,7 +186,7 @@ namespace Dashboard is
             let columns = TEXT.words(text.substring(close + 1)) | .collect_list()
 
             if columns.count < 13 then
-                return null;
+                return null
             fi
 
             return
@@ -194,7 +194,7 @@ namespace Dashboard is
                     command,
                     TEXT.to_int(columns[1]),
                     TEXT.to_long(columns[11]) + TEXT.to_long(columns[12])
-                );
+                )
         si
     si
 si
