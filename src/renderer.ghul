@@ -1,4 +1,5 @@
 namespace Dashboard is
+    use Ghul.Pipes
     use Collections.Iterable
     use Collections.MutableList
     use Collections.LIST
@@ -29,9 +30,9 @@ namespace Dashboard is
         render(snapshot: SNAPSHOT) -> Iterable[string] is
             let lines = LIST[string]()
 
-            let sessions = snapshot.sessions | .collect_list()
-            let runs = snapshot.runs | .collect_list()
-            let pull_requests = snapshot.pull_requests | .collect_list()
+            let sessions = snapshot.sessions |> collect_list()
+            let runs = snapshot.runs |> collect_list()
+            let pull_requests = snapshot.pull_requests |> collect_list()
 
             let run_rows = get_run_rows(runs)
             let pull_request_rows = LAYOUT.get_capped(pull_requests.count, LAYOUT.maximum_pull_request_rows)
@@ -51,7 +52,7 @@ namespace Dashboard is
             let rows mut = 0
 
             for run in runs do
-                rows = rows + 2 + LAYOUT.get_capped(run.running| .count(), LAYOUT.maximum_in_flight_rows)
+                rows = rows + 2 + LAYOUT.get_capped(run.running |> count(), LAYOUT.maximum_in_flight_rows)
             od
 
             if rows == 0 then
@@ -83,7 +84,7 @@ namespace Dashboard is
             append_meter(line, "cpu", system.processor_percent, meter)
             append_meter(line, "mem", system.memory_percent, meter)
 
-            let cores = system.core_percents| .count()
+            let cores = system.core_percents |> count()
 
             line.try_append(
                 16,
@@ -249,14 +250,14 @@ namespace Dashboard is
             for run in runs do
                 let where = describe_run_location(run, snapshot)
 
-                let suites = SCREEN.dim(run.suites| .to_string(" "))
+                let suites = SCREEN.dim(run.suites |> join(" "))
                 let elapsed = SCREEN.dim("{run.elapsed_seconds}s")
 
                 lines.add("  {SCREEN.bold(where)}  {suites}  {elapsed}")
 
                 lines.add("    {format_run_bar(run)}")
 
-                for test in run.running | .take(LAYOUT.maximum_in_flight_rows) do
+                for test in run.running |> take(LAYOUT.maximum_in_flight_rows) do
                     lines.add("      {SCREEN.dim(SCREEN.clip(test, _width - 6))}")
                 od
             od

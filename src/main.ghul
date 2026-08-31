@@ -1,4 +1,5 @@
 namespace Dashboard is
+    use Ghul.Pipes
     use System.Exception
 
     use IO.Std
@@ -90,7 +91,7 @@ namespace Dashboard is
                     continue
                 fi
 
-                let sessions = snapshot.sessions | .collect_list()
+                let sessions = snapshot.sessions |> collect_list()
 
                 // A resize leaves the parts of the screen the new layout does
                 // not reach holding the old frame, so it is cleared before

@@ -1,4 +1,5 @@
 namespace Dashboard is
+    use Ghul.Pipes
     use Collections.Iterable
     use Collections.LIST
 
@@ -22,7 +23,7 @@ namespace Dashboard is
         // spent idle or waiting on I/O is not the processor being busy. Returns
         // null for a line that is not a CPU line.
         parse(line: string?) -> PROCESSOR_TIMES? static is
-            let columns = TEXT.words(line) | .collect_list()
+            let columns = TEXT.words(line) |> collect_list()
 
             if columns.count < 5 \/ !columns[0].starts_with("cpu") then
                 return null
@@ -116,7 +117,7 @@ namespace Dashboard is
             let result = MEMORY_INFO()
 
             for line in TEXT.lines(text) do
-                let words = TEXT.words(line) | .collect_list()
+                let words = TEXT.words(line) |> collect_list()
 
                 if words.count < 2 then
                     continue
@@ -142,7 +143,7 @@ namespace Dashboard is
     class LOAD_AVERAGE is
         // The one-minute figure, the first of the five columns.
         parse(text: string?) -> double static is
-            let words = TEXT.words(text) | .collect_list()
+            let words = TEXT.words(text) |> collect_list()
 
             if words.count == 0 then
                 return 0.0D
@@ -183,7 +184,7 @@ namespace Dashboard is
 
             // Counting from the column after the command: state, ppid, ...,
             // then utime and stime.
-            let columns = TEXT.words(text.substring(close + 1)) | .collect_list()
+            let columns = TEXT.words(text.substring(close + 1)) |> collect_list()
 
             if columns.count < 13 then
                 return null

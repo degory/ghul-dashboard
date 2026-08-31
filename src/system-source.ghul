@@ -1,4 +1,5 @@
 namespace Dashboard is
+    use Ghul.Pipes
     use Collections.Iterable
     use Collections.MutableList
     use Collections.MutableMap
@@ -61,7 +62,7 @@ namespace Dashboard is
 
         // /proc/stat leads with the aggregate line, then one line per core.
         read_processor_times(result: SYSTEM) is
-            let all = PROCESSOR_TIMES.parse_all(FILES.read_text("/proc/stat")) | .collect_list()
+            let all = PROCESSOR_TIMES.parse_all(FILES.read_text("/proc/stat")) |> collect_list()
 
             if all.count == 0 then
                 return
@@ -96,7 +97,7 @@ namespace Dashboard is
                 index = index + 1
             od
 
-            result.core_percents = percents | .collect_array()
+            result.core_percents = percents |> collect_array()
         si
 
         read_memory(result: SYSTEM) static is

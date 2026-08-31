@@ -1,4 +1,5 @@
 namespace Dashboard is
+    use Ghul.Pipes
     use Collections.Iterable
     use Collections.LIST
 
@@ -37,7 +38,7 @@ namespace Dashboard is
 
             let scope = get_scope()
 
-            if scope| .count() == 0 then
+            if scope |> count() == 0 then
                 return _pull_requests
             fi
 
@@ -47,7 +48,7 @@ namespace Dashboard is
                 return _pull_requests
             fi
 
-            _pull_requests = PULL_REQUEST_ROWS.parse(output) | .collect_list()
+            _pull_requests = PULL_REQUEST_ROWS.parse(output) |> collect_list()
             _fetched_at = now
 
             return _pull_requests
@@ -64,7 +65,7 @@ namespace Dashboard is
             ".data.search.nodes[] | select(.headRefName != null) | [.number, .headRefName, .repository.name, (.reviewDecision // \"NONE\"), (.commits.nodes[0].commit.statusCheckRollup.state // \"NONE\")] | @tsv"
 
         search(scope: Iterable[string]) -> string is
-            let terms = scope| .to_string(" ")
+            let terms = scope |> join(" ")
 
             return
                 PROCESS_RUNNER.run(
