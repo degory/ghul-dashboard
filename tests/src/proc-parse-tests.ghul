@@ -1,4 +1,5 @@
 namespace Tests is
+    use Ghul.Pipes
     use Dashboard
     use TestClass = Microsoft.VisualStudio.TestTools.UnitTesting.TestClassAttribute
     use Test = Microsoft.VisualStudio.TestTools.UnitTesting.TestMethodAttribute
@@ -89,7 +90,7 @@ namespace Tests is
             let all =
                 PROCESSOR_TIMES.parse_all(
                     "cpu  10 0 0 90 0\ncpu0 5 0 0 45 0\ncpu1 5 0 0 45 0\nintr 999\nctxt 12345"
-                ) | .collect_list()
+                ) |> collect_list()
 
             are_equal(3, all.count)
             are_equal(100L, all[0].total)
